@@ -5,4 +5,5 @@ sealed class Screen(val route: String) {
     object Scanner : Screen("scanner")
     object Osint : Screen("osint")
     object Vault : Screen("vault")
+    object Ping : Screen("ping")
 }

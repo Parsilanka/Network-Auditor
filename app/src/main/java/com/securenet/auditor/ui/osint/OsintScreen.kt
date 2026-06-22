@@ -24,6 +24,10 @@ import com.securenet.auditor.ui.theme.MonoType
 import com.securenet.auditor.ui.theme.SuccessGreen
 import com.securenet.auditor.ui.theme.TealPrimary
 
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.ui.platform.LocalContext
+import com.securenet.auditor.ui.components.copyToClipboard
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OsintScreen(viewModel: OsintViewModel) {
@@ -187,19 +191,28 @@ fun EmailReputationCombinedCard(data: CombinedEmailCheckResult) {
 
 @Composable
 fun ReputationRow(label: String, value: String, isMonospace: Boolean = false) {
+    val context = LocalContext.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            fontFamily = if (isMonospace) MonoType else null,
-            color = if (isMonospace) TealPrimary else Color.Unspecified
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                fontFamily = if (isMonospace) MonoType else null,
+                color = if (isMonospace) TealPrimary else Color.Unspecified
+            )
+            if (value != "N/A" && value.isNotBlank()) {
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = { copyToClipboard(context, label, value) }, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(14.dp), tint = TealPrimary)
+                }
+            }
+        }
     }
 }
 
@@ -283,6 +296,7 @@ fun EmailTab(viewModel: OsintViewModel, result: OsintResult<List<com.securenet.a
 @Composable
 fun DomainTab(viewModel: OsintViewModel, result: OsintResult<com.securenet.auditor.data.remote.dto.HunterResponseDto>) {
     var domain by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     Column(modifier = Modifier.padding(16.dp)) {
         OutlinedTextField(
@@ -320,8 +334,14 @@ fun DomainTab(viewModel: OsintViewModel, result: OsintResult<com.securenet.audit
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
-                                Text(emailData.value, fontFamily = MonoType)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(emailData.value, fontFamily = MonoType)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(onClick = { copyToClipboard(context, "Email", emailData.value) }, modifier = Modifier.size(24.dp)) {
+                                        Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy Email", modifier = Modifier.size(14.dp), tint = TealPrimary)
+                                    }
+                                }
                                 Text(emailData.type ?: "personal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                             }
                             Text("${emailData.confidence}%", fontWeight = FontWeight.Bold, color = TealPrimary)

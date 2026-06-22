@@ -3,17 +3,26 @@ package com.securenet.auditor
 import android.Manifest
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.FragmentActivity
 import com.securenet.auditor.ui.navigation.NavGraph
 import com.securenet.auditor.ui.theme.SecureNetTheme
+import com.securenet.auditor.ui.theme.ThemeViewModel
 
 class MainActivity : FragmentActivity() {
+    private val themeViewModel: ThemeViewModel by viewModels {
+        ThemeViewModel.Factory((application as SecureNetApp).container.encryptedPrefs)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestPermissions()
         setContent {
-            SecureNetTheme {
+            val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
+            SecureNetTheme(isDarkTheme = isDarkTheme) {
                 NavGraph()
             }
         }

@@ -1,12 +1,17 @@
 package com.securenet.auditor.ui.vault
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,8 +23,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.securenet.auditor.data.ExportManager
 import com.securenet.auditor.data.db.ScanResultEntity
 import com.securenet.auditor.ui.components.EmptyStateView
+import com.securenet.auditor.ui.components.copyToClipboard
 import com.securenet.auditor.ui.theme.MonoType
 import com.securenet.auditor.ui.theme.TealPrimary
 import java.text.SimpleDateFormat
@@ -28,7 +35,8 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VaultScreen(viewModel: VaultViewModel) {
-    val history by viewModel.scanHistory.collectAsStateWithLifecycle()
+    val history by viewModel.filteredHistory.collectAsStateWithLifecycle()
+    val fullHistory by viewModel.scanHistory.collectAsStateWithLifecycle()
     val isAuthenticated by viewModel.isAuthenticated.collectAsStateWithLifecycle()
     val isAuthenticating by viewModel.isAuthenticating.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -38,7 +46,7 @@ fun VaultScreen(viewModel: VaultViewModel) {
             viewModel.authenticate(context as FragmentActivity)
         }
     } else {
-        UnlockedVault(viewModel, history)
+        UnlockedVault(viewModel, history, fullHistory)
     }
 }
 
@@ -73,14 +81,50 @@ fun LockedVault(isAuthenticating: Boolean, onUnlock: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UnlockedVault(viewModel: VaultViewModel, history: List<ScanResultEntity>) {
+fun UnlockedVault(
+    viewModel: VaultViewModel,
+    history: List<ScanResultEntity>,
+    fullHistory: List<ScanResultEntity>
+) {
     var showDeleteAllDialog by remember { mutableStateOf(false) }
+    var showExportMenu by remember { mutableStateOf(false) }
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val activeFilter by viewModel.activeFilter.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val exportManager = remember { ExportManager(context) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Scan Vault", fontWeight = FontWeight.Bold) },
                 actions = {
+                    Box {
+                        IconButton(onClick = { showExportMenu = true }) {
+                            Icon(Icons.Outlined.Share, contentDescription = "Export")
+                        }
+                        DropdownMenu(
+                            expanded = showExportMenu,
+                            onDismissRequest = { showExportMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Export as CSV") },
+                                onClick = {
+                                    showExportMenu = false
+                                    exportManager.exportAsCsv(history)?.let { uri ->
+                                        exportManager.shareExport(uri)
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Copy to Clipboard") },
+                                onClick = {
+                                    showExportMenu = false
+                                    val allIps = history.joinToString("\n") { it.ipAddress }
+                                    copyToClipboard(context, "Vault IPs", allIps)
+                                }
+                            )
+                        }
+                    }
                     IconButton(onClick = { viewModel.lockVault() }) {
                         Icon(Icons.Default.LockOpen, contentDescription = "Lock")
                     }
@@ -88,7 +132,7 @@ fun UnlockedVault(viewModel: VaultViewModel, history: List<ScanResultEntity>) {
             )
         },
         floatingActionButton = {
-            if (history.isNotEmpty()) {
+            if (fullHistory.isNotEmpty()) {
                 FloatingActionButton(
                     onClick = { showDeleteAllDialog = true },
                     containerColor = MaterialTheme.colorScheme.errorContainer
@@ -98,7 +142,7 @@ fun UnlockedVault(viewModel: VaultViewModel, history: List<ScanResultEntity>) {
             }
         }
     ) { padding ->
-        if (history.isEmpty()) {
+        if (fullHistory.isEmpty()) {
             Box(modifier = Modifier.padding(padding)) {
                 EmptyStateView(
                     icon = Icons.Outlined.Lock,
@@ -109,10 +153,49 @@ fun UnlockedVault(viewModel: VaultViewModel, history: List<ScanResultEntity>) {
         } else {
             LazyColumn(modifier = Modifier.padding(padding).fillMaxSize().padding(horizontal = 16.dp)) {
                 item {
-                    StatsRow(history)
+                    StatsRow(fullHistory)
+                    
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.updateSearchQuery(it) },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        placeholder = { Text("Search by IP, Tag, or Date") },
+                        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.medium
+                    )
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        VaultFilter.values().forEach { filter ->
+                            FilterChip(
+                                selected = activeFilter == filter,
+                                onClick = { viewModel.updateFilter(filter) },
+                                label = { Text(filter.name.lowercase().capitalize()) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = TealPrimary,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
+                    }
                 }
-                items(history) { entry ->
-                    VaultEntryCard(entry, onDelete = { viewModel.deleteEntry(entry.id) }, onUpdateTag = { viewModel.updateTag(entry.id, it) })
+                
+                if (history.isEmpty() && searchQuery.isNotEmpty()) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) {
+                            Text("No results match your search", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                } else {
+                    items(history) { entry ->
+                        VaultEntryCard(entry, onDelete = { viewModel.deleteEntry(entry.id) }, onUpdateTag = { viewModel.updateTag(entry.id, it) })
+                    }
                 }
             }
         }
@@ -161,6 +244,7 @@ fun VaultEntryCard(entry: ScanResultEntity, onDelete: () -> Unit, onUpdateTag: (
     var expanded by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
     var tagText by remember { mutableStateOf(entry.tag ?: "") }
+    val context = LocalContext.current
     
     val date = remember(entry.timestamp) {
         SimpleDateFormat("MMM dd yyyy, HH:mm", Locale.getDefault()).format(Date(entry.timestamp))
@@ -200,7 +284,12 @@ fun VaultEntryCard(entry: ScanResultEntity, onDelete: () -> Unit, onUpdateTag: (
                     Divider()
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Session Details:", style = MaterialTheme.typography.labelMedium)
-                    Text("IPs: ${entry.ipAddress}", style = MaterialTheme.typography.bodySmall, fontFamily = MonoType)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("IPs: ${entry.ipAddress}", style = MaterialTheme.typography.bodySmall, fontFamily = MonoType, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { copyToClipboard(context, "IP Address", entry.ipAddress) }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy IP", modifier = Modifier.size(14.dp), tint = TealPrimary)
+                        }
+                    }
                     Text("Aggregated Ports: ${if (entry.openPorts.isEmpty()) "None" else entry.openPorts}", style = MaterialTheme.typography.bodySmall, fontFamily = MonoType)
                     Text("Avg Response Time: ${entry.responseTimeMs}ms", style = MaterialTheme.typography.bodySmall)
                 }

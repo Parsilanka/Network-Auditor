@@ -6,13 +6,12 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.text.format.Formatter
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Wifi
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +26,7 @@ import com.securenet.auditor.ui.scanner.ScannerViewModel
 import com.securenet.auditor.ui.theme.MonoType
 import com.securenet.auditor.ui.theme.SuccessGreen
 import com.securenet.auditor.ui.theme.TealPrimary
+import com.securenet.auditor.ui.theme.ThemeViewModel
 import kotlinx.coroutines.delay
 import java.net.Inet4Address
 import java.net.NetworkInterface
@@ -35,11 +35,13 @@ import java.net.NetworkInterface
 @Composable
 fun DashboardScreen(
     navController: NavController,
-    scannerViewModel: ScannerViewModel
+    scannerViewModel: ScannerViewModel,
+    themeViewModel: ThemeViewModel
 ) {
     val context = LocalContext.current
     var wifiName by remember { mutableStateOf("Checking...") }
     var localIp by remember { mutableStateOf("") }
+    val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -60,6 +62,17 @@ fun DashboardScreen(
                         color = TealPrimary,
                         fontWeight = FontWeight.Bold
                     )
+                },
+                actions = {
+                    IconButton(onClick = { themeViewModel.toggleTheme() }) {
+                        Crossfade(targetState = isDarkTheme) { dark ->
+                            Icon(
+                                imageVector = if (dark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                                contentDescription = "Toggle Theme",
+                                tint = TealPrimary
+                            )
+                        }
+                    }
                 }
             )
         }
@@ -121,6 +134,12 @@ fun DashboardScreen(
                 title = "Secure Vault",
                 subtitle = "Encrypted scan history",
                 onClick = { navController.navigate(Screen.Vault.route) }
+            )
+            FeatureCard(
+                icon = Icons.Outlined.Terminal,
+                title = "Network Tools",
+                subtitle = "Ping, DNS & Security tools",
+                onClick = { navController.navigate(Screen.Ping.route) }
             )
 
             Spacer(modifier = Modifier.weight(1f))

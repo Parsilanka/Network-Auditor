@@ -15,6 +15,9 @@ import com.securenet.auditor.ui.osint.OsintScreen
 import com.securenet.auditor.ui.osint.OsintViewModel
 import com.securenet.auditor.ui.scanner.NetworkMapScreen
 import com.securenet.auditor.ui.scanner.ScannerViewModel
+import com.securenet.auditor.ui.theme.ThemeViewModel
+import com.securenet.auditor.ui.tools.PingScreen
+import com.securenet.auditor.ui.tools.PingViewModel
 import com.securenet.auditor.ui.vault.VaultScreen
 import com.securenet.auditor.ui.vault.VaultViewModel
 
@@ -23,6 +26,7 @@ fun NavGraph() {
     val navController = rememberNavController()
     val context = LocalContext.current
     val container = (context.applicationContext as SecureNetApp).container
+    val themeViewModel: ThemeViewModel = viewModel(factory = ThemeViewModel.Factory(container.encryptedPrefs))
 
     Scaffold(
         bottomBar = { BottomNavBar(navController) }
@@ -34,7 +38,7 @@ fun NavGraph() {
         ) {
             composable(Screen.Dashboard.route) {
                 val scannerViewModel: ScannerViewModel = viewModel(factory = ScannerViewModel.provideFactory(container))
-                DashboardScreen(navController, scannerViewModel)
+                DashboardScreen(navController, scannerViewModel, themeViewModel)
             }
             composable(Screen.Scanner.route) {
                 val scannerViewModel: ScannerViewModel = viewModel(factory = ScannerViewModel.provideFactory(container))
@@ -47,6 +51,10 @@ fun NavGraph() {
             composable(Screen.Vault.route) {
                 val vaultViewModel: VaultViewModel = viewModel(factory = VaultViewModel.provideFactory(container))
                 VaultScreen(vaultViewModel)
+            }
+            composable(Screen.Ping.route) {
+                val pingViewModel: PingViewModel = viewModel(factory = PingViewModel.provideFactory(container))
+                PingScreen(pingViewModel, onBack = { navController.popBackStack() })
             }
         }
     }

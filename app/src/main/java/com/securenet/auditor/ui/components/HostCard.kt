@@ -15,6 +15,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.ui.platform.LocalContext
 import com.securenet.auditor.domain.model.HostInfo
 import com.securenet.auditor.ui.theme.MonoType
 import com.securenet.auditor.ui.theme.TealPrimary
@@ -23,6 +25,7 @@ import com.securenet.auditor.ui.theme.TealPrimary
 @Composable
 fun HostCard(host: HostInfo, onPortScan: (HostInfo) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Card(
         modifier = Modifier
@@ -37,13 +40,19 @@ fun HostCard(host: HostInfo, onPortScan: (HostInfo) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = host.ipAddress,
-                        fontFamily = MonoType,
-                        color = TealPrimary,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = host.ipAddress,
+                            fontFamily = MonoType,
+                            color = TealPrimary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = { copyToClipboard(context, "IP Address", host.ipAddress) }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy IP", modifier = Modifier.size(14.dp), tint = TealPrimary)
+                        }
+                    }
                     Text(
                         text = host.hostname ?: "Unresolved",
                         style = MaterialTheme.typography.bodySmall,

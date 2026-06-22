@@ -34,8 +34,17 @@ class EncryptedPrefsManager(context: Context) {
         sharedPreferences.edit().remove(service).apply()
     }
 
+    fun saveTheme(isDark: Boolean) {
+        sharedPreferences.edit().putBoolean(THEME_KEY, isDark).apply()
+    }
+
+    fun getTheme(): Boolean {
+        return sharedPreferences.getBoolean(THEME_KEY, true)
+    }
+
     companion object {
         const val HIBP_KEY = "hibp_api_key"
         const val HUNTER_KEY = "hunter_api_key"
+        const val THEME_KEY = "app_theme"
     }
 }

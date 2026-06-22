@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,9 +19,13 @@ import com.securenet.auditor.domain.model.BreachResult
 import com.securenet.auditor.domain.model.BreachSeverity
 import com.securenet.auditor.ui.theme.*
 
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.ui.platform.LocalContext
+
 @Composable
 fun BreachCard(breach: BreachResult) {
     var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     
     val severityColor = when (breach.severity) {
         BreachSeverity.LOW -> SuccessGreen
@@ -77,12 +83,18 @@ fun BreachCard(breach: BreachResult) {
                     }
                 }
                 
-                Text(
-                    text = breach.domain,
-                    fontFamily = MonoType,
-                    color = MaterialTheme.colorScheme.secondary,
-                    fontSize = 12.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = breach.domain,
+                        fontFamily = MonoType,
+                        color = MaterialTheme.colorScheme.secondary,
+                        fontSize = 12.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { copyToClipboard(context, "Domain", breach.domain) }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Outlined.ContentCopy, contentDescription = "Copy Domain", modifier = Modifier.size(14.dp), tint = TealPrimary)
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
