@@ -10,9 +10,10 @@ import android.os.Build
 import android.text.format.Formatter
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import androidx.lifecycle.viewModelScope
+import com.securenet.auditor.network.WifiScanner
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
 data class WifiSecurityInfo(
     val ssid: String,
@@ -36,7 +37,10 @@ data class AvailableWifiNetwork(
     val frequency: Int
 )
 
-class WifiSecurityViewModel(private val context: Context) : ViewModel() {
+class WifiSecurityViewModel(
+    private val context: Context,
+    private val scanner: WifiScanner = WifiScanner(context)
+) : ViewModel() {
 
     private val _wifiInfo = MutableStateFlow<WifiSecurityInfo?>(null)
     val wifiInfo: StateFlow<WifiSecurityInfo?> = _wifiInfo.asStateFlow()
@@ -44,10 +48,12 @@ class WifiSecurityViewModel(private val context: Context) : ViewModel() {
     private val _availableNetworks = MutableStateFlow<List<AvailableWifiNetwork>>(emptyList())
     val availableNetworks: StateFlow<List<AvailableWifiNetwork>> = _availableNetworks.asStateFlow()
 
+    private val _isScanning = MutableStateFlow(false)
+    val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
+
     @SuppressLint("MissingPermission")
     fun refreshWifiInfo() {
         val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         
         val connectionInfo: WifiInfo? = wifiManager.connectionInfo
         val dhcpInfo = wifiManager.dhcpInfo
@@ -62,6 +68,7 @@ class WifiSecurityViewModel(private val context: Context) : ViewModel() {
         val signalLevel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             wifiManager.calculateSignalLevel(connectionInfo.rssi)
         } else {
+            @Suppress("DEPRECATION")
             WifiManager.calculateSignalLevel(connectionInfo.rssi, 5)
         }
         
@@ -81,27 +88,21 @@ class WifiSecurityViewModel(private val context: Context) : ViewModel() {
             isSecure = !encryption.contains("None", true) && !encryption.contains("Open", true)
         )
         
-        scanAvailableNetworks()
+        startWifiScan()
     }
 
     @SuppressLint("MissingPermission")
-    fun scanAvailableNetworks() {
-        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val results = wifiManager.scanResults
-        _availableNetworks.value = results.map {
-            val level = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                wifiManager.calculateSignalLevel(it.level)
-            } else {
-                WifiManager.calculateSignalLevel(it.level, 5)
-            }
-            AvailableWifiNetwork(
-                ssid = it.SSID,
-                bssid = it.BSSID,
-                signalLevel = level,
-                capabilities = it.capabilities,
-                frequency = it.frequency
-            )
-        }.filter { it.ssid.isNotBlank() }.sortedByDescending { it.signalLevel }
+    fun startWifiScan() {
+        if (_isScanning.value) return
+        _isScanning.value = true
+        viewModelScope.launch {
+            scanner.scanNetworks()
+                .onCompletion { _isScanning.value = false }
+                .collect { networks ->
+                    _availableNetworks.value = networks
+                    _isScanning.value = false
+                }
+        }
     }
 
     private fun getEncryptionType(wifiManager: WifiManager, info: WifiInfo): String {

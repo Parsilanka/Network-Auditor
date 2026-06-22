@@ -10,5 +10,8 @@ sealed class Screen(val route: String) {
     object Monitor : Screen("monitor")
     object VulnerabilityReport : Screen("vuln_report")
     object RogueAp : Screen("rogue_ap")
+    object WifiScanner : Screen("wifi_scanner")
+    object HashTool : Screen("hash_tool")
+    object QrScanner : Screen("qr_scanner")
     object Analytics : Screen("analytics")
 }

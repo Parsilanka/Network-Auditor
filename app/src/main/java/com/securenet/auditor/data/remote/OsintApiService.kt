@@ -101,4 +101,22 @@ object OsintApiService {
             .build()
             .create(HunterApiService::class.java)
     }
+
+    fun createIpApiService(): IpApiService {
+        return Retrofit.Builder()
+            .baseUrl("http://ip-api.com/")
+            .client(createOkHttpClient())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(IpApiService::class.java)
+    }
+
+    fun createUrlHausService(): UrlHausApiService {
+        return Retrofit.Builder()
+            .baseUrl("https://urlhaus-api.abuse.ch/")
+            .client(createOkHttpClient())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(UrlHausApiService::class.java)
+    }
 }

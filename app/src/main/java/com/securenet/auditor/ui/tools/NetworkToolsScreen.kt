@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.securenet.auditor.ui.components.WifiNetworkCard
 import com.securenet.auditor.ui.theme.MonoType
 import com.securenet.auditor.ui.theme.SuccessGreen
 import com.securenet.auditor.ui.theme.TealPrimary
@@ -285,6 +286,7 @@ fun SslRow(label: String, value: String) {
 fun WifiTab(viewModel: WifiSecurityViewModel) {
     val info by viewModel.wifiInfo.collectAsStateWithLifecycle()
     val availableNetworks by viewModel.availableNetworks.collectAsStateWithLifecycle()
+    val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     
     LaunchedEffect(Unit) {
         viewModel.refreshWifiInfo()
@@ -293,8 +295,14 @@ fun WifiTab(viewModel: WifiSecurityViewModel) {
     Column(modifier = Modifier.padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Connection Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            IconButton(onClick = { viewModel.refreshWifiInfo() }) {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+            Row {
+                if (isScanning) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp).align(Alignment.CenterVertically), strokeWidth = 2.dp, color = TealPrimary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                IconButton(onClick = { viewModel.refreshWifiInfo() }) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                }
             }
         }
 
@@ -321,54 +329,8 @@ fun WifiTab(viewModel: WifiSecurityViewModel) {
             )
         } else {
             availableNetworks.forEach { network ->
-                AvailableNetworkItem(network)
+                WifiNetworkCard(network)
                 Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun AvailableNetworkItem(network: AvailableWifiNetwork) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Wifi,
-                contentDescription = null,
-                tint = TealPrimary,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (network.ssid.isEmpty()) "[Hidden Network]" else network.ssid,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = network.capabilities,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "${(network.signalLevel + 1) * 20}%",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (network.signalLevel >= 3) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "${network.frequency} MHz",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }

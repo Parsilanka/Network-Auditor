@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlinAndroid)
 }
 
 android {
@@ -43,18 +44,22 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
 }
 
 dependencies {
     // Compose BOM
-    val composeBom = platform("androidx.compose:compose-bom:2025.01.00")
-    implementation(composeBom)
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.material.icons.extended)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     // Activity + Navigation
     implementation("androidx.activity:activity-compose:1.9.3")
@@ -86,7 +91,14 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     // Core
-    implementation("androidx.core:core-ktx:1.13.1")
+    implementation(libs.androidx.core.ktx)
+
+    // QR & Camera
+    implementation("androidx.camera:camera-camera2:1.4.1")
+    implementation("androidx.camera:camera-lifecycle:1.4.1")
+    implementation("androidx.camera:camera-view:1.4.1")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    implementation("com.google.accompanist:accompanist-permissions:0.36.0")
 
     // Test
     testImplementation("junit:junit:4.13.2")

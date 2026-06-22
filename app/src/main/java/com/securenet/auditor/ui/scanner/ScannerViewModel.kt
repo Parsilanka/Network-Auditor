@@ -7,6 +7,7 @@ import com.securenet.auditor.AppContainer
 import com.securenet.auditor.data.repository.ScanRepository
 import com.securenet.auditor.domain.model.HostInfo
 import com.securenet.auditor.domain.model.ScanProgress
+import com.securenet.auditor.network.CredentialChecker
 import com.securenet.auditor.network.PortScanner
 import com.securenet.auditor.network.SubnetScanner
 import kotlinx.coroutines.Job
@@ -18,7 +19,8 @@ import kotlinx.coroutines.launch
 class ScannerViewModel(
     private val scanner: SubnetScanner,
     private val portScanner: PortScanner,
-    private val repository: ScanRepository
+    private val repository: ScanRepository,
+    private val credentialChecker: CredentialChecker = CredentialChecker()
 ) : ViewModel() {
 
     private val _scanProgress = MutableStateFlow<ScanProgress>(ScanProgress.Idle)
@@ -80,6 +82,16 @@ class ScannerViewModel(
             val openPorts = portScanner.scanPorts(host.ipAddress)
             _discoveredHosts.value = _discoveredHosts.value.map {
                 if (it.ipAddress == host.ipAddress) it.copy(openPorts = openPorts) else it
+            }
+            
+            // Check default credentials if 80 or 443 is open
+            if (openPorts.contains(80) || openPorts.contains(443)) {
+                val port = if (openPorts.contains(80)) 80 else 443
+                val credResult = credentialChecker.check(host.ipAddress, port)
+                if (credResult.foundCredentials != null) {
+                    // Update host info or trigger an alert
+                    // For now, let's just log it or we could add a field to HostInfo
+                }
             }
         }
     }

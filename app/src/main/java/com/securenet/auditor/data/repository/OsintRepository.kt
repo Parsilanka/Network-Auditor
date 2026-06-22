@@ -1,15 +1,10 @@
 package com.securenet.auditor.data.repository
 
 import com.securenet.auditor.data.prefs.EncryptedPrefsManager
-import com.securenet.auditor.data.remote.DisifyService
-import com.securenet.auditor.data.remote.HibpApiService
-import com.securenet.auditor.data.remote.HunterApiService
-import com.securenet.auditor.data.remote.MailCheckService
+import com.securenet.auditor.data.remote.*
 import com.securenet.auditor.data.remote.dto.HunterResponseDto
-import com.securenet.auditor.domain.model.BreachResult
-import com.securenet.auditor.domain.model.BreachSeverity
-import com.securenet.auditor.domain.model.CombinedEmailCheckResult
-import com.securenet.auditor.domain.model.OsintResult
+import com.securenet.auditor.domain.model.*
+import com.securenet.auditor.network.WhoisClient
 import java.io.IOException
 import java.net.SocketTimeoutException
 
@@ -18,6 +13,9 @@ class OsintRepository(
     private val hunterService: HunterApiService,
     private val disifyService: DisifyService,
     private val mailCheckService: MailCheckService,
+    private val ipApiService: IpApiService,
+    private val urlHausService: UrlHausApiService,
+    private val whoisClient: WhoisClient,
     private val prefs: EncryptedPrefsManager
 ) {
 
@@ -108,6 +106,44 @@ class OsintRepository(
             OsintResult.Error("No internet connection")
         } catch (e: Exception) {
             OsintResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    suspend fun getIpGeo(ip: String): OsintResult<IpGeoDto> {
+        return try {
+            val response = ipApiService.getGeo(ip)
+            if (response.isSuccessful) {
+                val data = response.body()
+                if (data?.status == "success") OsintResult.Found(data)
+                else OsintResult.Error(data?.status ?: "Unknown API error")
+            } else {
+                handleHttpError(response.code())
+            }
+        } catch (e: Exception) {
+            OsintResult.Error(e.message ?: "Network error")
+        }
+    }
+
+    suspend fun getWhois(query: String): OsintResult<String> {
+        return try {
+            val result = whoisClient.lookup(query)
+            if (result.startsWith("Error")) OsintResult.Error(result)
+            else OsintResult.Found(result)
+        } catch (e: Exception) {
+            OsintResult.Error(e.message ?: "Whois error")
+        }
+    }
+
+    suspend fun checkMalwareUrl(url: String): OsintResult<UrlHausResponse> {
+        return try {
+            val response = urlHausService.checkUrl(url)
+            if (response.isSuccessful) {
+                response.body()?.let { OsintResult.Found(it) } ?: OsintResult.NotFound
+            } else {
+                handleHttpError(response.code())
+            }
+        } catch (e: Exception) {
+            OsintResult.Error(e.message ?: "Malware check error")
         }
     }
 

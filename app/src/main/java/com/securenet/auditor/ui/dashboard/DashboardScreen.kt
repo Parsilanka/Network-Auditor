@@ -44,7 +44,8 @@ import java.net.NetworkInterface
 fun DashboardScreen(
     navController: NavController,
     scannerViewModel: ScannerViewModel,
-    themeViewModel: ThemeViewModel
+    themeViewModel: ThemeViewModel,
+    onMenuClick: () -> Unit
 ) {
     val context = LocalContext.current
     val container = (context.applicationContext as SecureNetApp).container
@@ -81,6 +82,11 @@ fun DashboardScreen(
                         color = TealPrimary,
                         fontWeight = FontWeight.Bold
                     )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(imageVector = Icons.Outlined.Menu, contentDescription = "Menu", tint = TealPrimary)
+                    }
                 },
                 actions = {
                     IconButton(onClick = { themeViewModel.toggleTheme() }) {
@@ -165,6 +171,27 @@ fun DashboardScreen(
                 statusColor = if (rogueReport?.riskLevel == "CRITICAL" || rogueReport?.riskLevel == "HIGH") Color.Red else SuccessGreen,
                 subtitle = if (rogueReport != null) "Last check: ${rogueReport?.riskLevel}" else "Tap to scan for rogue APs",
                 onClick = { navController.navigate(Screen.RogueAp.route) }
+            )
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.WifiTethering,
+                title = "Wi-Fi Scanner",
+                subtitle = "Analyze nearby Wi-Fi signals",
+                onClick = { navController.navigate(Screen.WifiScanner.route) }
+            )
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.QrCodeScanner,
+                title = "QR Wi-Fi Scanner",
+                subtitle = "Scan and analyze Wi-Fi QR codes",
+                onClick = { navController.navigate(Screen.QrScanner.route) }
+            )
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.Tag,
+                title = "Hash Generator",
+                subtitle = "MD5, SHA-256 hash & verify",
+                onClick = { navController.navigate(Screen.HashTool.route) }
             )
 
             Spacer(modifier = Modifier.height(16.dp))

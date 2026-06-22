@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.securenet.auditor.AppContainer
 import com.securenet.auditor.data.prefs.EncryptedPrefsManager
+import com.securenet.auditor.data.remote.IpGeoDto
+import com.securenet.auditor.data.remote.UrlHausResponse
 import com.securenet.auditor.data.remote.dto.HunterResponseDto
 import com.securenet.auditor.data.repository.OsintRepository
 import com.securenet.auditor.domain.model.BreachResult
@@ -28,6 +30,15 @@ class OsintViewModel(
 
     private val _emailRepResult = MutableStateFlow<OsintResult<CombinedEmailCheckResult>>(OsintResult.Idle)
     val emailRepResult: StateFlow<OsintResult<CombinedEmailCheckResult>> = _emailRepResult.asStateFlow()
+
+    private val _ipGeoResult = MutableStateFlow<OsintResult<IpGeoDto>>(OsintResult.Idle)
+    val ipGeoResult: StateFlow<OsintResult<IpGeoDto>> = _ipGeoResult.asStateFlow()
+
+    private val _whoisResult = MutableStateFlow<OsintResult<String>>(OsintResult.Idle)
+    val whoisResult: StateFlow<OsintResult<String>> = _whoisResult.asStateFlow()
+
+    private val _malwareResult = MutableStateFlow<OsintResult<UrlHausResponse>>(OsintResult.Idle)
+    val malwareResult: StateFlow<OsintResult<UrlHausResponse>> = _malwareResult.asStateFlow()
 
     private val _selectedTab = MutableStateFlow(0)
     val selectedTab: StateFlow<Int> = _selectedTab.asStateFlow()
@@ -60,6 +71,27 @@ class OsintViewModel(
         viewModelScope.launch {
             _emailRepResult.value = OsintResult.Loading
             _emailRepResult.value = repository.checkEmailReputation(email)
+        }
+    }
+
+    fun checkIpGeo(ip: String) {
+        viewModelScope.launch {
+            _ipGeoResult.value = OsintResult.Loading
+            _ipGeoResult.value = repository.getIpGeo(ip)
+        }
+    }
+
+    fun performWhois(query: String) {
+        viewModelScope.launch {
+            _whoisResult.value = OsintResult.Loading
+            _whoisResult.value = repository.getWhois(query)
+        }
+    }
+
+    fun checkMalware(url: String) {
+        viewModelScope.launch {
+            _malwareResult.value = OsintResult.Loading
+            _malwareResult.value = repository.checkMalwareUrl(url)
         }
     }
 
