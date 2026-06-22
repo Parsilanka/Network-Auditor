@@ -9,6 +9,8 @@ import android.text.format.Formatter
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.*
@@ -16,17 +18,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.securenet.auditor.SecureNetApp
+import com.securenet.auditor.ui.monitor.MonitorViewModel
 import com.securenet.auditor.ui.navigation.Screen
 import com.securenet.auditor.ui.scanner.ScannerViewModel
 import com.securenet.auditor.ui.theme.MonoType
 import com.securenet.auditor.ui.theme.SuccessGreen
 import com.securenet.auditor.ui.theme.TealPrimary
 import com.securenet.auditor.ui.theme.ThemeViewModel
+import com.securenet.auditor.ui.tools.RogueApViewModel
+import com.securenet.auditor.ui.tools.SpeedTestViewModel
 import kotlinx.coroutines.delay
 import java.net.Inet4Address
 import java.net.NetworkInterface
@@ -39,6 +47,17 @@ fun DashboardScreen(
     themeViewModel: ThemeViewModel
 ) {
     val context = LocalContext.current
+    val container = (context.applicationContext as SecureNetApp).container
+    
+    val monitorViewModel: MonitorViewModel = viewModel(factory = MonitorViewModel.provideFactory(context))
+    val speedTestViewModel: SpeedTestViewModel = viewModel(factory = SpeedTestViewModel.provideFactory(container.speedTestDao))
+    val rogueApViewModel: RogueApViewModel = viewModel(factory = RogueApViewModel.provideFactory(context))
+
+    val isMonitorRunning by monitorViewModel.isMonitorRunning.collectAsState()
+    val alertHistory by monitorViewModel.alertHistory.collectAsState()
+    val speedHistory by speedTestViewModel.history.collectAsState()
+    val rogueReport by rogueApViewModel.report.collectAsState()
+
     var wifiName by remember { mutableStateOf("Checking...") }
     var localIp by remember { mutableStateOf("") }
     val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
@@ -80,9 +99,11 @@ fun DashboardScreen(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
         ) {
+            Spacer(modifier = Modifier.height(8.dp))
             // Wi-Fi Status
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -116,33 +137,72 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Feature Cards
-            FeatureCard(
+            // Main Features Group
+            Text("Core Security", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            DashboardFeatureCard(
                 icon = Icons.Outlined.Wifi,
                 title = "Network Scanner",
                 subtitle = "Discover devices and open ports",
                 onClick = { navController.navigate(Screen.Scanner.route) }
             )
-            FeatureCard(
+            
+            val todayAlerts = alertHistory.count { it.timestamp > System.currentTimeMillis() - 24*60*60*1000 }
+            DashboardFeatureCard(
+                icon = Icons.Outlined.NotificationsActive,
+                title = "Network Monitor",
+                statusText = if (isMonitorRunning) "Active" else "Inactive",
+                statusColor = if (isMonitorRunning) SuccessGreen else Color.Gray,
+                subtitle = if (todayAlerts > 0) "$todayAlerts alerts today" else "No alerts today",
+                onClick = { navController.navigate(Screen.Monitor.route) }
+            )
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.Radar,
+                title = "Rogue AP Detector",
+                statusText = if (rogueReport?.riskLevel == "CRITICAL" || rogueReport?.riskLevel == "HIGH") "Warning ⚠" else "Clean ✓",
+                statusColor = if (rogueReport?.riskLevel == "CRITICAL" || rogueReport?.riskLevel == "HIGH") Color.Red else SuccessGreen,
+                subtitle = if (rogueReport != null) "Last check: ${rogueReport?.riskLevel}" else "Tap to scan for rogue APs",
+                onClick = { navController.navigate(Screen.RogueAp.route) }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Analysis & Tools", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val lastSpeed = speedHistory.firstOrNull()
+            DashboardFeatureCard(
+                icon = Icons.Outlined.Speed,
+                title = "Speed Test",
+                subtitle = if (lastSpeed != null) "↓ ${"%.1f".format(lastSpeed.downloadMbps)} Mbps ↑ ${"%.1f".format(lastSpeed.uploadMbps)} Mbps" else "Tap to test network speed",
+                onClick = { navController.navigate(Screen.SpeedTest.route) }
+            )
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.Assessment,
+                title = "Security Report",
+                statusText = "BETA",
+                statusColor = TealPrimary,
+                subtitle = "Comprehensive vulnerability analysis",
+                onClick = { navController.navigate(Screen.VulnerabilityReport.route) }
+            )
+
+            DashboardFeatureCard(
                 icon = Icons.Outlined.Search,
                 title = "OSINT Intelligence",
                 subtitle = "Check breaches and domain info",
                 onClick = { navController.navigate(Screen.Osint.route) }
             )
-            FeatureCard(
+
+            DashboardFeatureCard(
                 icon = Icons.Outlined.Lock,
                 title = "Secure Vault",
                 subtitle = "Encrypted scan history",
                 onClick = { navController.navigate(Screen.Vault.route) }
             )
-            FeatureCard(
-                icon = Icons.Outlined.Terminal,
-                title = "Network Tools",
-                subtitle = "Ping, DNS & Security tools",
-                onClick = { navController.navigate(Screen.Ping.route) }
-            )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
 
             FilledTonalButton(
                 onClick = {
@@ -154,43 +214,76 @@ fun DashboardScreen(
             ) {
                 Text("QUICK SCAN", fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
             }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-fun FeatureCard(
+fun DashboardFeatureCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
+    statusText: String? = null,
+    statusColor: Color = TealPrimary,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(vertical = 6.dp)
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = TealPrimary,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(20.dp))
+            Surface(
+                color = TealPrimary.copy(alpha = 0.1f),
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = TealPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    if (statusText != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            color = statusColor.copy(alpha = 0.1f),
+                            shape = MaterialTheme.shapes.extraSmall
+                        ) {
+                            Text(
+                                text = statusText,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = statusColor
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
             }
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
         }
     }

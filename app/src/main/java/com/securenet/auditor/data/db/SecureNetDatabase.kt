@@ -5,9 +5,10 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [ScanResultEntity::class], version = 3, exportSchema = false)
+@Database(entities = [ScanResultEntity::class, SpeedTestEntity::class], version = 4, exportSchema = false)
 abstract class SecureNetDatabase : RoomDatabase() {
     abstract fun scanResultDao(): ScanResultDao
+    abstract fun speedTestDao(): SpeedTestDao
 
     companion object {
         @Volatile private var INSTANCE: SecureNetDatabase? = null

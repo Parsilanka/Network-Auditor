@@ -17,6 +17,7 @@ class AppContainer(context: Context) {
     private val db = SecureNetDatabase.getInstance(context)
     val encryptedPrefs = EncryptedPrefsManager(context)
     val scanResultDao = db.scanResultDao()
+    val speedTestDao = db.speedTestDao()
     val scanRepository = ScanRepository(scanResultDao)
     val subnetScanner = SubnetScanner(context)
     val portScanner = PortScanner()
