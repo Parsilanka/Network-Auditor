@@ -23,6 +23,7 @@ fun PingScreen(viewModel: PingViewModel, onBack: () -> Unit) {
     var host by remember { mutableStateOf("") }
     val results by viewModel.pingResults.collectAsStateWithLifecycle()
     val isRunning by viewModel.isRunning.collectAsStateWithLifecycle()
+    val summary by viewModel.summary.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -86,20 +87,20 @@ fun PingScreen(viewModel: PingViewModel, onBack: () -> Unit) {
                 items(results) { result ->
                     Text(
                         text = if (result.isSuccess) {
-                            "64 bytes from ${result.host}: seq=${result.sequenceNumber} time=${result.responseTimeMs}ms"
+                            "Reply from ${result.host}: time=${result.responseTimeMs}ms"
                         } else {
                             "Request timeout for seq ${result.sequenceNumber}"
                         },
                         fontFamily = MonoType,
                         fontSize = 12.sp,
-                        color = if (result.isSuccess) TealPrimary else Color.Red,
+                        color = if (result.isSuccess) Color(0xFF00BFA5) else Color(0xFFF44336),
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
                 }
             }
 
             if (results.isNotEmpty() && !isRunning) {
-                PingSummaryCard(results)
+                PingSummaryCard(summary)
             }
         }
     }
@@ -115,13 +116,7 @@ fun QuickPingButton(label: String, value: String, isRunning: Boolean, onClick: (
 }
 
 @Composable
-fun PingSummaryCard(results: List<PingResult>) {
-    val successful = results.filter { it.isSuccess }
-    val min = successful.minOfOrNull { it.responseTimeMs ?: Long.MAX_VALUE }
-    val max = successful.maxOfOrNull { it.responseTimeMs ?: 0 }
-    val avg = if (successful.isNotEmpty()) successful.map { it.responseTimeMs ?: 0 }.average().toInt() else 0
-    val packetLoss = ((results.size - successful.size).toFloat() / results.size * 100).toInt()
-
+fun PingSummaryCard(summary: PingSummary) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
@@ -130,10 +125,10 @@ fun PingSummaryCard(results: List<PingResult>) {
             Text("Summary", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                SummaryStat("Min", "${min ?: 0}ms")
-                SummaryStat("Avg", "${avg}ms")
-                SummaryStat("Max", "${max ?: 0}ms")
-                SummaryStat("Loss", "$packetLoss%")
+                SummaryStat("Min", "${summary.minTime}ms")
+                SummaryStat("Avg", "${summary.avgTime}ms")
+                SummaryStat("Max", "${summary.maxTime}ms")
+                SummaryStat("Loss", "${summary.lossPercent}%")
             }
         }
     }
