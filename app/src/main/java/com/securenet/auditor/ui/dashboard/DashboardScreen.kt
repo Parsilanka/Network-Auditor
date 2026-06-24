@@ -194,6 +194,13 @@ fun DashboardScreen(
                 onClick = { navController.navigate(Screen.HashTool.route) }
             )
 
+            DashboardFeatureCard(
+                icon = Icons.Outlined.Lock,
+                title = "Password Auditor",
+                subtitle = "Check complexity and resilience",
+                onClick = { navController.navigate(Screen.PasswordAuditor.route) }
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
             Text("Analysis & Tools", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))

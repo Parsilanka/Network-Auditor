@@ -154,6 +154,14 @@ fun NavGraph() {
                         onBack = { navController.popBackStack() }
                     )
                 }
+                composable(Screen.PasswordAuditor.route) {
+                    val passwordViewModel: PasswordViewModel = viewModel(factory = PasswordViewModel.provideFactory(container))
+                    PasswordAuditorScreen(navController, passwordViewModel)
+                }
+                composable(Screen.PasswordManager.route) {
+                    val passwordViewModel: PasswordViewModel = viewModel(factory = PasswordViewModel.provideFactory(container))
+                    PasswordManagerScreen(navController, passwordViewModel)
+                }
                 composable(Screen.QrScanner.route) {
                     val qrViewModel: QrScannerViewModel = viewModel(factory = QrScannerViewModel.provideFactory())
                     QrScannerScreen(
@@ -280,6 +288,24 @@ fun DrawerContent(
                 onItemClick()
             }
         )
+        DrawerItem(
+            icon = Icons.Outlined.Lock,
+            label = "Password Auditor",
+            selected = currentRoute == Screen.PasswordAuditor.route,
+            onClick = {
+                navController.navigate(Screen.PasswordAuditor.route)
+                onItemClick()
+            }
+        )
+        DrawerItem(
+            icon = Icons.Outlined.Password,
+            label = "Password Manager",
+            selected = currentRoute == Screen.PasswordManager.route,
+            onClick = {
+                navController.navigate(Screen.PasswordManager.route)
+                onItemClick()
+            }
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
         Text("INTELLIGENCE", style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(start = 12.dp, bottom = 4.dp))
@@ -288,6 +314,15 @@ fun DrawerContent(
             icon = Icons.Outlined.Search,
             label = "OSINT Intelligence",
             selected = currentRoute == Screen.Osint.route,
+            onClick = {
+                navController.navigate(Screen.Osint.route)
+                onItemClick()
+            }
+        )
+        DrawerItem(
+            icon = Icons.Outlined.Contactless,
+            label = "Breach Checker",
+            selected = currentRoute == Screen.Osint.route, // Shares route for now
             onClick = {
                 navController.navigate(Screen.Osint.route)
                 onItemClick()

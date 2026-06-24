@@ -8,6 +8,7 @@ import com.securenet.auditor.data.remote.MailCheckService
 import com.securenet.auditor.network.MacVendorLookup
 import com.securenet.auditor.data.remote.OsintApiService
 import com.securenet.auditor.data.repository.OsintRepository
+import com.securenet.auditor.data.repository.PasswordRepository
 import com.securenet.auditor.data.repository.ScanRepository
 import com.securenet.auditor.network.PortScanner
 import com.securenet.auditor.network.SubnetScanner
@@ -23,7 +24,10 @@ class AppContainer(context: Context) {
     val scanResultDao = db.scanResultDao()
     val speedTestDao = db.speedTestDao()
     val arpDao = db.arpDao()
+    val passwordDao = db.passwordDao()
+
     val scanRepository = ScanRepository(scanResultDao)
+    val passwordRepository = PasswordRepository(passwordDao)
     val subnetScanner = SubnetScanner(context)
     val portScanner = PortScanner()
     val macVendorLookup = MacVendorLookup()
@@ -32,6 +36,7 @@ class AppContainer(context: Context) {
 
     // Retrofit services
     private val hibpService = OsintApiService.createHibpService()
+    private val pwnedPasswordsService = OsintApiService.createPwnedPasswordsService()
     private val hunterService = OsintApiService.createHunterService()
     private val disifyService = DisifyService.create()
     private val mailCheckService = MailCheckService.create()
@@ -43,10 +48,11 @@ class AppContainer(context: Context) {
     val geoLocationRepository = GeoLocationRepository(geoLocationService)
 
     val osintRepository = OsintRepository(
-        hibpService, 
-        hunterService, 
-        disifyService, 
-        mailCheckService, 
+        hibpService,
+        pwnedPasswordsService,
+        hunterService,
+        disifyService,
+        mailCheckService,
         ipApiService,
         urlHausService,
         whoisClient,

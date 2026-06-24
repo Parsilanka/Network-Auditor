@@ -22,6 +22,11 @@ interface HibpApiService {
     ): Response<List<BreachDto>>
 }
 
+interface PwnedPasswordsService {
+    @GET("range/{hashPrefix}")
+    suspend fun getPwnedHashes(@Path("hashPrefix") hashPrefix: String): Response<String>
+}
+
 interface HunterApiService {
     @GET("domain-search")
     suspend fun searchDomain(
@@ -91,6 +96,15 @@ object OsintApiService {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(HibpApiService::class.java)
+    }
+
+    fun createPwnedPasswordsService(): PwnedPasswordsService {
+        return Retrofit.Builder()
+            .baseUrl("https://api.pwnedpasswords.com/")
+            .client(createOkHttpClient())
+            .addConverterFactory(retrofit2.converter.scalars.ScalarsConverterFactory.create())
+            .build()
+            .create(PwnedPasswordsService::class.java)
     }
 
     fun createHunterService(): HunterApiService {

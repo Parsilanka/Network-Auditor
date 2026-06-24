@@ -16,4 +16,6 @@ sealed class Screen(val route: String) {
     object Analytics : Screen("analytics")
     object GeoLocation : Screen("geolocation")
     object SnmpInspector : Screen("snmp_inspector")
+    object PasswordAuditor : Screen("password_auditor")
+    object PasswordManager : Screen("password_manager")
 }

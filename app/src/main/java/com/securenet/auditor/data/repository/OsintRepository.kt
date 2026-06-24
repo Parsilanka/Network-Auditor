@@ -7,9 +7,11 @@ import com.securenet.auditor.domain.model.*
 import com.securenet.auditor.network.WhoisClient
 import java.io.IOException
 import java.net.SocketTimeoutException
+import java.security.MessageDigest
 
 class OsintRepository(
     private val hibpService: HibpApiService,
+    private val pwnedPasswordsService: PwnedPasswordsService,
     private val hunterService: HunterApiService,
     private val disifyService: DisifyService,
     private val mailCheckService: MailCheckService,
@@ -144,6 +146,35 @@ class OsintRepository(
             }
         } catch (e: Exception) {
             OsintResult.Error(e.message ?: "Malware check error")
+        }
+    }
+
+    suspend fun checkPasswordBreach(password: String): OsintResult<Int> {
+        return try {
+            val sha1 = MessageDigest.getInstance("SHA-1")
+                .digest(password.toByteArray())
+                .joinToString("") { "%02x".format(it) }
+                .uppercase()
+            
+            val prefix = sha1.take(5)
+            val suffix = sha1.substring(5)
+            
+            val response = pwnedPasswordsService.getPwnedHashes(prefix)
+            if (response.isSuccessful) {
+                val body = response.body() ?: return OsintResult.NotFound
+                val lines = body.lines()
+                val match = lines.find { it.startsWith(suffix) }
+                if (match != null) {
+                    val count = match.split(":")[1].trim().toInt()
+                    OsintResult.Found(count)
+                } else {
+                    OsintResult.NotFound
+                }
+            } else {
+                OsintResult.Error("API error: ${response.code()}")
+            }
+        } catch (e: Exception) {
+            OsintResult.Error(e.message ?: "Unknown error")
         }
     }
 

@@ -5,11 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [ScanResultEntity::class, SpeedTestEntity::class, ArpEntity::class], version = 6, exportSchema = false)
+@Database(entities = [ScanResultEntity::class, SpeedTestEntity::class, ArpEntity::class, PasswordEntity::class], version = 7, exportSchema = false)
 abstract class SecureNetDatabase : RoomDatabase() {
     abstract fun scanResultDao(): ScanResultDao
     abstract fun speedTestDao(): SpeedTestDao
     abstract fun arpDao(): ArpDao
+    abstract fun passwordDao(): PasswordDao
 
     companion object {
         @Volatile private var INSTANCE: SecureNetDatabase? = null
