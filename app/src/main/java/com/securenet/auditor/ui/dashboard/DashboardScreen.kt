@@ -229,6 +229,20 @@ fun DashboardScreen(
                 onClick = { navController.navigate(Screen.Vault.route) }
             )
 
+            DashboardFeatureCard(
+                icon = Icons.Outlined.LocationOn,
+                title = "IP Geolocation",
+                subtitle = "Track IP location & threat level",
+                onClick = { navController.navigate(Screen.GeoLocation.route) }
+            )
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.Router,
+                title = "SNMP Inspector",
+                subtitle = "Query network device metrics",
+                onClick = { navController.navigate(Screen.SnmpInspector.route) }
+            )
+
             Spacer(modifier = Modifier.height(24.dp))
 
             FilledTonalButton(

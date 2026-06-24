@@ -5,8 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.securenet.auditor.AppContainer
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.securenet.auditor.data.db.ScanResultEntity
 import com.securenet.auditor.data.repository.ScanRepository
+import com.securenet.auditor.domain.model.HostInfo
 import com.securenet.auditor.security.BiometricHelper
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -15,13 +18,112 @@ import java.util.*
 
 enum class VaultFilter { ALL, TAGGED, UNTAGGED, TODAY, THIS_WEEK }
 
+enum class ComparisonStatus { NEW_SAFE, NEW_RISKY, UNCHANGED, REMOVED }
+
+data class ComparisonResult(
+    val scanA: ScanResultEntity,
+    val scanB: ScanResultEntity,
+    val devices: List<ComparisonDevice>
+)
+
+data class ComparisonDevice(
+    val ip: String,
+    val hostname: String?,
+    val status: ComparisonStatus,
+    val ports: String
+)
+
 class VaultViewModel(
     private val repository: ScanRepository,
     private val biometricHelper: BiometricHelper
 ) : ViewModel() {
+    private val gson = Gson()
+    private val riskyPorts = setOf(21, 22, 23, 80, 445, 3389, 5900)
 
     private val _scanHistory = MutableStateFlow<List<ScanResultEntity>>(emptyList())
     val scanHistory: StateFlow<List<ScanResultEntity>> = _scanHistory.asStateFlow()
+
+    private val _selectedScans = MutableStateFlow<Set<Long>>(emptySet())
+    val selectedScans: StateFlow<Set<Long>> = _selectedScans.asStateFlow()
+
+    private val _comparisonResult = MutableStateFlow<ComparisonResult?>(null)
+    val comparisonResult: StateFlow<ComparisonResult?> = _comparisonResult.asStateFlow()
+
+    fun toggleSelection(id: Long) {
+        _selectedScans.value = if (_selectedScans.value.contains(id)) {
+            _selectedScans.value - id
+        } else {
+            if (_selectedScans.value.size < 2) _selectedScans.value + id else _selectedScans.value
+        }
+    }
+
+    fun clearSelection() {
+        _selectedScans.value = emptySet()
+        _comparisonResult.value = null
+    }
+
+    fun compareSelected() {
+        val selectedIds = _selectedScans.value.toList()
+        if (selectedIds.size != 2) return
+
+        // Note: selectedIds[0] is most recent selection, but we want to compare by timestamp
+        val scans = _scanHistory.value.filter { it.id in selectedIds }.sortedBy { it.timestamp }
+        val older = scans[0]
+        val newer = scans[1]
+
+        val hostsA = deserializeHosts(older.detailedHostsJson)
+        val hostsB = deserializeHosts(newer.detailedHostsJson)
+
+        val comparisonDevices = mutableListOf<ComparisonDevice>()
+
+        val ipsA = hostsA.map { it.ipAddress }.toSet()
+        val ipsB = hostsB.map { it.ipAddress }.toSet()
+
+        // Unchanged or New
+        hostsB.forEach { hostB ->
+            if (ipsA.contains(hostB.ipAddress)) {
+                comparisonDevices.add(ComparisonDevice(
+                    hostB.ipAddress, 
+                    hostB.hostname, 
+                    ComparisonStatus.UNCHANGED,
+                    hostB.openPorts.joinToString(",")
+                ))
+            } else {
+                // New device
+                val isRisky = hostB.openPorts.any { it in riskyPorts }
+                comparisonDevices.add(ComparisonDevice(
+                    hostB.ipAddress, 
+                    hostB.hostname, 
+                    if (isRisky) ComparisonStatus.NEW_RISKY else ComparisonStatus.NEW_SAFE,
+                    hostB.openPorts.joinToString(",")
+                ))
+            }
+        }
+
+        // Removed devices
+        hostsA.forEach { hostA ->
+            if (!ipsB.contains(hostA.ipAddress)) {
+                comparisonDevices.add(ComparisonDevice(
+                    hostA.ipAddress, 
+                    hostA.hostname, 
+                    ComparisonStatus.REMOVED,
+                    hostA.openPorts.joinToString(",")
+                ))
+            }
+        }
+
+        _comparisonResult.value = ComparisonResult(older, newer, comparisonDevices)
+    }
+
+    private fun deserializeHosts(json: String?): List<HostInfo> {
+        if (json.isNullOrBlank()) return emptyList()
+        return try {
+            val type = object : TypeToken<List<HostInfo>>() {}.type
+            gson.fromJson(json, type)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()

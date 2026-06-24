@@ -6,13 +6,14 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "scan_results")
 data class ScanResultEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val ipAddress: String,        // Now stores comma-separated list of all IPs in the scan
-    val hostCount: Int,           // Total number of hosts discovered
-    val macAddress: String?,      // Restricted on Android, might be null
+    val ipAddress: String,        // Stores comma-separated list of all IPs
+    val hostCount: Int,           
+    val macAddress: String?,      
     val vendor: String?,
-    val openPorts: String,        // Aggregated ports or summary
-    val responseTimeMs: Long,     // Average response time for the scan session
+    val openPorts: String,        
+    val responseTimeMs: Long,     
     val hostname: String?,
     val timestamp: Long,
-    val tag: String?
+    val tag: String?,
+    val detailedHostsJson: String? = null // New field to store full HostInfo list as JSON
 )

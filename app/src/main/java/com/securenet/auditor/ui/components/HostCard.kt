@@ -6,6 +6,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Router
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,7 +25,12 @@ import com.securenet.auditor.ui.theme.TealPrimary
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun HostCard(host: HostInfo, onPortScan: (HostInfo) -> Unit) {
+fun HostCard(
+    host: HostInfo,
+    onPortScan: (HostInfo) -> Unit,
+    onGeolocate: () -> Unit = {},
+    onSnmpQuery: () -> Unit = {}
+) {
     var expanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -121,11 +128,33 @@ fun HostCard(host: HostInfo, onPortScan: (HostInfo) -> Unit) {
                     }
                     
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { onPortScan(host) },
-                        modifier = Modifier.align(Alignment.End)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
                     ) {
-                        Text("Scan Ports")
+                        OutlinedButton(
+                            onClick = onGeolocate,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TealPrimary)
+                        ) {
+                            Icon(Icons.Outlined.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Geolocate IP")
+                        }
+                        
+                        OutlinedButton(
+                            onClick = onSnmpQuery,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TealPrimary)
+                        ) {
+                            Icon(Icons.Outlined.Router, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("SNMP Query")
+                        }
+
+                        OutlinedButton(
+                            onClick = { onPortScan(host) }
+                        ) {
+                            Text("Scan Ports")
+                        }
                     }
                 }
             }

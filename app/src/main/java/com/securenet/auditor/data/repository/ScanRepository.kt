@@ -1,11 +1,13 @@
 package com.securenet.auditor.data.repository
 
+import com.google.gson.Gson
 import com.securenet.auditor.data.db.ScanResultDao
 import com.securenet.auditor.data.db.ScanResultEntity
 import com.securenet.auditor.domain.model.HostInfo
 import kotlinx.coroutines.flow.Flow
 
 class ScanRepository(private val dao: ScanResultDao) {
+    private val gson = Gson()
 
     fun getAllScansFlow(): Flow<List<ScanResultEntity>> = dao.getAllAsFlow()
 
@@ -15,6 +17,7 @@ class ScanRepository(private val dao: ScanResultDao) {
         val allIps = hosts.joinToString(",") { it.ipAddress }
         val totalPorts = hosts.flatMap { it.openPorts }.distinct().joinToString(",")
         val avgResponseTime = if (hosts.isNotEmpty()) hosts.map { it.responseTimeMs }.average().toLong() else 0L
+        val hostsJson = gson.toJson(hosts)
         
         val aggregateEntity = ScanResultEntity(
             ipAddress = allIps,
@@ -25,7 +28,8 @@ class ScanRepository(private val dao: ScanResultDao) {
             responseTimeMs = avgResponseTime,
             hostname = "Multiple Hosts",
             timestamp = System.currentTimeMillis(),
-            tag = null
+            tag = null,
+            detailedHostsJson = hostsJson
         )
         dao.insert(aggregateEntity)
     }

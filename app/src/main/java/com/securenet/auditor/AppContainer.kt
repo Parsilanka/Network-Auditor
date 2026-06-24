@@ -12,6 +12,9 @@ import com.securenet.auditor.data.repository.ScanRepository
 import com.securenet.auditor.network.PortScanner
 import com.securenet.auditor.network.SubnetScanner
 import com.securenet.auditor.network.WhoisClient
+import com.securenet.auditor.data.remote.GeoLocationService
+import com.securenet.auditor.data.repository.GeoLocationRepository
+import com.securenet.auditor.network.snmp.SnmpClient
 import com.securenet.auditor.security.BiometricHelper
 
 class AppContainer(context: Context) {
@@ -25,6 +28,7 @@ class AppContainer(context: Context) {
     val portScanner = PortScanner()
     val macVendorLookup = MacVendorLookup()
     val biometricHelper = BiometricHelper(context)
+    val snmpClient = SnmpClient()
 
     // Retrofit services
     private val hibpService = OsintApiService.createHibpService()
@@ -34,6 +38,9 @@ class AppContainer(context: Context) {
     private val ipApiService = OsintApiService.createIpApiService()
     private val urlHausService = OsintApiService.createUrlHausService()
     private val whoisClient = WhoisClient()
+    
+    val geoLocationService = GeoLocationService.create()
+    val geoLocationRepository = GeoLocationRepository(geoLocationService)
 
     val osintRepository = OsintRepository(
         hibpService, 

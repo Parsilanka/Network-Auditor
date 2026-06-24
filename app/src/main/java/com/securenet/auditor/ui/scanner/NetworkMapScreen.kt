@@ -17,16 +17,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.securenet.auditor.domain.model.ScanProgress
 import com.securenet.auditor.ui.components.EmptyStateView
 import com.securenet.auditor.ui.components.HostCard
+import com.securenet.auditor.ui.navigation.Screen
 import com.securenet.auditor.ui.theme.MonoType
 import com.securenet.auditor.ui.theme.SuccessGreen
 import com.securenet.auditor.ui.theme.TealPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NetworkMapScreen(viewModel: ScannerViewModel) {
+fun NetworkMapScreen(navController: NavController, viewModel: ScannerViewModel) {
     val progress by viewModel.scanProgress.collectAsStateWithLifecycle()
     val hosts by viewModel.discoveredHosts.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
@@ -107,7 +109,12 @@ fun NetworkMapScreen(viewModel: ScannerViewModel) {
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     items(hosts) { host ->
-                        HostCard(host = host, onPortScan = { viewModel.runPortScan(it) })
+                        HostCard(
+                            host = host,
+                            onPortScan = { viewModel.runPortScan(it) },
+                            onGeolocate = { navController.navigate(Screen.GeoLocation.route + "?ip=${host.ipAddress}") },
+                            onSnmpQuery = { navController.navigate(Screen.SnmpInspector.route + "?ip=${host.ipAddress}") }
+                        )
                     }
                     
                     if (progress is ScanProgress.Complete) {

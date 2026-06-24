@@ -1,6 +1,8 @@
 package com.securenet.auditor.ui.navigation
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.*
@@ -22,6 +24,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.securenet.auditor.SecureNetApp
 import com.securenet.auditor.ui.dashboard.DashboardScreen
+import com.securenet.auditor.ui.geolocation.GeoLocationScreen
+import com.securenet.auditor.ui.geolocation.GeoLocationViewModel
 import com.securenet.auditor.ui.monitor.MonitorScreen
 import com.securenet.auditor.ui.monitor.MonitorViewModel
 import com.securenet.auditor.ui.osint.OsintScreen
@@ -30,6 +34,8 @@ import com.securenet.auditor.ui.report.VulnerabilityReportScreen
 import com.securenet.auditor.ui.report.VulnerabilityViewModel
 import com.securenet.auditor.ui.scanner.NetworkMapScreen
 import com.securenet.auditor.ui.scanner.ScannerViewModel
+import com.securenet.auditor.ui.snmp.SnmpScreen
+import com.securenet.auditor.ui.snmp.SnmpViewModel
 import com.securenet.auditor.ui.theme.ThemeViewModel
 import com.securenet.auditor.ui.tools.*
 import com.securenet.auditor.ui.vault.VaultScreen
@@ -77,7 +83,17 @@ fun NavGraph() {
                 }
                 composable(Screen.Scanner.route) {
                     val scannerViewModel: ScannerViewModel = viewModel(factory = ScannerViewModel.provideFactory(container))
-                    NetworkMapScreen(scannerViewModel)
+                    NetworkMapScreen(navController, scannerViewModel)
+                }
+                composable(Screen.GeoLocation.route + "?ip={ip}") { backStackEntry ->
+                    val ip = backStackEntry.arguments?.getString("ip")
+                    val geoViewModel: GeoLocationViewModel = viewModel(factory = GeoLocationViewModel.factory(container.geoLocationRepository))
+                    GeoLocationScreen(navController, geoViewModel, initialIp = ip)
+                }
+                composable(Screen.SnmpInspector.route + "?ip={ip}") { backStackEntry ->
+                    val ip = backStackEntry.arguments?.getString("ip")
+                    val snmpViewModel: SnmpViewModel = viewModel(factory = SnmpViewModel.factory(container.snmpClient))
+                    SnmpScreen(navController, snmpViewModel, initialIp = ip)
                 }
                 composable(Screen.Osint.route) {
                     val osintViewModel: OsintViewModel = viewModel(factory = OsintViewModel.provideFactory(container))
@@ -182,16 +198,18 @@ fun DrawerContent(
         modifier = Modifier
             .fillMaxHeight()
             .padding(16.dp)
+            .verticalScroll(rememberScrollState())
     ) {
         Text(
-            text = "SecureNet Auditor",
+            text = "Network Auditor",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(vertical = 24.dp)
         )
         
-        HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
+        HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
+        Text("CORE", style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 4.dp))
 
         DrawerItem(
             icon = Icons.Outlined.Dashboard,
@@ -223,6 +241,19 @@ fun DrawerContent(
             }
         )
         DrawerItem(
+            icon = Icons.Outlined.NotificationsActive,
+            label = "Network Monitor",
+            selected = currentRoute == Screen.Monitor.route,
+            onClick = {
+                navController.navigate(Screen.Monitor.route)
+                onItemClick()
+            }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("TOOLS", style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(start = 12.dp, bottom = 4.dp))
+        
+        DrawerItem(
             icon = Icons.Outlined.Build,
             label = "Network Tools",
             selected = currentRoute == Screen.Ping.route,
@@ -249,15 +280,10 @@ fun DrawerContent(
                 onItemClick()
             }
         )
-        DrawerItem(
-            icon = Icons.Outlined.NotificationsActive,
-            label = "Network Monitor",
-            selected = currentRoute == Screen.Monitor.route,
-            onClick = {
-                navController.navigate(Screen.Monitor.route)
-                onItemClick()
-            }
-        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("INTELLIGENCE", style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(start = 12.dp, bottom = 4.dp))
+
         DrawerItem(
             icon = Icons.Outlined.Search,
             label = "OSINT Intelligence",
@@ -267,6 +293,28 @@ fun DrawerContent(
                 onItemClick()
             }
         )
+        DrawerItem(
+            icon = Icons.Outlined.LocationOn,
+            label = "IP Geolocation",
+            selected = currentRoute == Screen.GeoLocation.route,
+            onClick = {
+                navController.navigate(Screen.GeoLocation.route)
+                onItemClick()
+            }
+        )
+        DrawerItem(
+            icon = Icons.Outlined.Router,
+            label = "SNMP Inspector",
+            selected = currentRoute == Screen.SnmpInspector.route,
+            onClick = {
+                navController.navigate(Screen.SnmpInspector.route)
+                onItemClick()
+            }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("STORAGE", style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(start = 12.dp, bottom = 4.dp))
+
         DrawerItem(
             icon = Icons.Outlined.Lock,
             label = "Secure Vault",

@@ -1,11 +1,15 @@
 package com.securenet.auditor.ui.vault
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -39,6 +43,8 @@ fun VaultScreen(viewModel: VaultViewModel) {
     val fullHistory by viewModel.scanHistory.collectAsStateWithLifecycle()
     val isAuthenticated by viewModel.isAuthenticated.collectAsStateWithLifecycle()
     val isAuthenticating by viewModel.isAuthenticating.collectAsStateWithLifecycle()
+    val selectedScans by viewModel.selectedScans.collectAsStateWithLifecycle()
+    val comparisonResult by viewModel.comparisonResult.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     if (!isAuthenticated) {
@@ -46,7 +52,11 @@ fun VaultScreen(viewModel: VaultViewModel) {
             viewModel.authenticate(context as FragmentActivity)
         }
     } else {
-        UnlockedVault(viewModel, history, fullHistory)
+        if (comparisonResult != null) {
+            ComparisonView(result = comparisonResult!!, onDismiss = { viewModel.clearSelection() })
+        } else {
+            UnlockedVault(viewModel, history, fullHistory, selectedScans)
+        }
     }
 }
 
@@ -84,7 +94,8 @@ fun LockedVault(isAuthenticating: Boolean, onUnlock: () -> Unit) {
 fun UnlockedVault(
     viewModel: VaultViewModel,
     history: List<ScanResultEntity>,
-    fullHistory: List<ScanResultEntity>
+    fullHistory: List<ScanResultEntity>,
+    selectedScans: Set<Long>
 ) {
     var showDeleteAllDialog by remember { mutableStateOf(false) }
     var showExportMenu by remember { mutableStateOf(false) }
@@ -96,8 +107,29 @@ fun UnlockedVault(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Scan Vault", fontWeight = FontWeight.Bold) },
+                title = { 
+                    if (selectedScans.isEmpty()) Text("Scan Vault", fontWeight = FontWeight.Bold)
+                    else Text("${selectedScans.size} selected", fontWeight = FontWeight.Bold)
+                },
+                navigationIcon = {
+                    if (selectedScans.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear Selection")
+                        }
+                    }
+                },
                 actions = {
+                    if (selectedScans.size == 2) {
+                        Button(
+                            onClick = { viewModel.compareSelected() },
+                            modifier = Modifier.padding(end = 8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = TealPrimary)
+                        ) {
+                            Icon(Icons.Default.CompareArrows, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Compare")
+                        }
+                    }
                     Box {
                         IconButton(onClick = { showExportMenu = true }) {
                             Icon(Icons.Outlined.Share, contentDescription = "Export")
@@ -132,7 +164,7 @@ fun UnlockedVault(
             )
         },
         floatingActionButton = {
-            if (fullHistory.isNotEmpty()) {
+            if (fullHistory.isNotEmpty() && selectedScans.isEmpty()) {
                 FloatingActionButton(
                     onClick = { showDeleteAllDialog = true },
                     containerColor = MaterialTheme.colorScheme.errorContainer
@@ -184,6 +216,15 @@ fun UnlockedVault(
                             )
                         }
                     }
+                    
+                    if (selectedScans.isEmpty() && fullHistory.size >= 2) {
+                        Text(
+                            "Select two scans to compare them",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
                 }
                 
                 if (history.isEmpty() && searchQuery.isNotEmpty()) {
@@ -194,7 +235,16 @@ fun UnlockedVault(
                     }
                 } else {
                     items(history) { entry ->
-                        VaultEntryCard(entry, onDelete = { viewModel.deleteEntry(entry.id) }, onUpdateTag = { viewModel.updateTag(entry.id, it) })
+                        VaultEntryCard(
+                            entry = entry, 
+                            isSelected = selectedScans.contains(entry.id),
+                            onDelete = { viewModel.deleteEntry(entry.id) }, 
+                            onUpdateTag = { viewModel.updateTag(entry.id, it) },
+                            onLongClick = { viewModel.toggleSelection(entry.id) },
+                            onClick = { 
+                                if (selectedScans.isNotEmpty()) viewModel.toggleSelection(entry.id)
+                            }
+                        )
                     }
                 }
             }
@@ -238,9 +288,16 @@ fun StatsRow(history: List<ScanResultEntity>) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun VaultEntryCard(entry: ScanResultEntity, onDelete: () -> Unit, onUpdateTag: (String) -> Unit) {
+fun VaultEntryCard(
+    entry: ScanResultEntity, 
+    isSelected: Boolean,
+    onDelete: () -> Unit, 
+    onUpdateTag: (String) -> Unit,
+    onLongClick: () -> Unit,
+    onClick: () -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
     var showTagDialog by remember { mutableStateOf(false) }
     var tagText by remember { mutableStateOf(entry.tag ?: "") }
@@ -251,17 +308,34 @@ fun VaultEntryCard(entry: ScanResultEntity, onDelete: () -> Unit, onUpdateTag: (
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        onClick = { expanded = !expanded }
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .combinedClickable(
+                onClick = { 
+                    if (isSelected) onClick()
+                    else expanded = !expanded 
+                },
+                onLongClick = onLongClick
+            ),
+        colors = if (isSelected) CardDefaults.cardColors(containerColor = TealPrimary.copy(alpha = 0.15f)) else CardDefaults.cardColors(),
+        border = if (isSelected) BorderStroke(2.dp, TealPrimary) else null
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text(date, fontWeight = FontWeight.Bold)
-                    Text("${entry.hostCount} hosts discovered", color = TealPrimary, fontSize = 12.sp)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isSelected) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = TealPrimary, modifier = Modifier.padding(end = 8.dp))
+                    }
+                    Column {
+                        Text(date, fontWeight = FontWeight.Bold)
+                        Text("${entry.hostCount} hosts discovered", color = TealPrimary, fontSize = 12.sp)
+                    }
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                if (!isSelected) {
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
             
@@ -279,9 +353,9 @@ fun VaultEntryCard(entry: ScanResultEntity, onDelete: () -> Unit, onUpdateTag: (
                 }
             }
 
-            AnimatedVisibility(visible = expanded) {
+            AnimatedVisibility(visible = expanded && !isSelected) {
                 Column(modifier = Modifier.padding(top = 16.dp)) {
-                    Divider()
+                    HorizontalDivider()
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Session Details:", style = MaterialTheme.typography.labelMedium)
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -319,5 +393,96 @@ fun VaultEntryCard(entry: ScanResultEntity, onDelete: () -> Unit, onUpdateTag: (
                 }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ComparisonView(result: ComparisonResult, onDismiss: () -> Unit) {
+    val dateA = remember(result.scanA.timestamp) {
+        SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(result.scanA.timestamp))
+    }
+    val dateB = remember(result.scanB.timestamp) {
+        SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(result.scanB.timestamp))
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Scan Comparison", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Base Scan", style = MaterialTheme.typography.labelSmall)
+                        Text(dateA, fontWeight = FontWeight.Bold)
+                        Text("${result.scanA.hostCount} hosts", fontSize = 12.sp, color = TealPrimary)
+                    }
+                    Icon(Icons.Default.CompareArrows, contentDescription = null, modifier = Modifier.align(Alignment.CenterVertically))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Target Scan", style = MaterialTheme.typography.labelSmall)
+                        Text(dateB, fontWeight = FontWeight.Bold)
+                        Text("${result.scanB.hostCount} hosts", fontSize = 12.sp, color = TealPrimary)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Text("Device Changes:", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(result.devices) { device ->
+                    ComparisonDeviceItem(device)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ComparisonDeviceItem(device: ComparisonDevice) {
+    val color = when (device.status) {
+        ComparisonStatus.NEW_SAFE -> Color(0xFF4CAF50)
+        ComparisonStatus.NEW_RISKY -> Color(0xFFF44336)
+        ComparisonStatus.UNCHANGED -> Color.Gray
+        ComparisonStatus.REMOVED -> Color.LightGray
+    }
+
+    val statusText = when (device.status) {
+        ComparisonStatus.NEW_SAFE -> "New Device (Safe)"
+        ComparisonStatus.NEW_RISKY -> "New Device (RISKY!)"
+        ComparisonStatus.UNCHANGED -> "Unchanged"
+        ComparisonStatus.REMOVED -> "Removed"
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.5f))
+    ) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(12.dp).background(color, CircleShape))
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(device.ip, fontWeight = FontWeight.Bold, fontFamily = MonoType)
+                if (device.hostname != null) {
+                    Text(device.hostname, style = MaterialTheme.typography.bodySmall)
+                }
+                if (device.ports.isNotEmpty()) {
+                    Text("Ports: ${device.ports}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Text(statusText, style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.Bold)
+        }
     }
 }
