@@ -32,11 +32,13 @@ fun NetworkToolsScreen(
     sslViewModel: SslViewModel,
     wifiViewModel: WifiSecurityViewModel,
     rogueApViewModel: RogueApViewModel,
+    wolViewModel: WolViewModel,
+    whoisViewModel: WhoisViewModel,
     onBack: () -> Unit,
     onNavigateToSpeedTest: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Ping", "DNS", "SSL", "Wi-Fi", "Rogue AP", "Speed")
+    val tabs = listOf("Ping", "DNS", "SSL", "Wi-Fi", "Rogue AP", "WoL", "Whois", "Speed")
 
     Scaffold(
         topBar = {
@@ -84,6 +86,110 @@ fun NetworkToolsScreen(
                 2 -> SslTab(sslViewModel)
                 3 -> WifiTab(wifiViewModel)
                 4 -> RogueApTab(rogueApViewModel)
+                5 -> WolTab(wolViewModel)
+                6 -> WhoisTab(whoisViewModel)
+            }
+        }
+    }
+}
+
+@Composable
+fun WhoisTab(viewModel: WhoisViewModel) {
+    var query by remember { mutableStateOf("") }
+    val result by viewModel.result.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+
+    Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+        Text("WHOIS Lookup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Lookup registration information for a domain or IP address.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Domain or IP Address") },
+            placeholder = { Text("e.g. google.com") },
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Button(
+            onClick = { viewModel.performWhois(query) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading && query.isNotBlank(),
+            colors = ButtonDefaults.buttonColors(containerColor = TealPrimary)
+        ) {
+            if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+            else Text("LOOKUP WHOIS")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        result?.let {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                LazyColumn(modifier = Modifier.padding(16.dp).heightIn(max = 300.dp)) {
+                    item {
+                        Text(it, fontFamily = MonoType, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun WolTab(viewModel: WolViewModel) {
+    var mac by remember { mutableStateOf("") }
+    val status by viewModel.status.collectAsStateWithLifecycle()
+
+    Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+        Text("Wake-on-LAN", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Wake up a device by sending a Magic Packet to its MAC address.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        OutlinedTextField(
+            value = mac,
+            onValueChange = { mac = it.uppercase() },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("MAC Address") },
+            placeholder = { Text("00:11:22:33:44:55") },
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Button(
+            onClick = { viewModel.sendMagicPacket(mac) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = mac.isNotBlank(),
+            colors = ButtonDefaults.buttonColors(containerColor = TealPrimary)
+        ) {
+            Icon(Icons.Default.PowerSettingsNew, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("WAKE UP DEVICE")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        status?.let {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (it.startsWith("Error")) MaterialTheme.colorScheme.errorContainer else SuccessGreen.copy(alpha = 0.1f)
+                )
+            ) {
+                Text(
+                    it,
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    fontFamily = MonoType,
+                    fontSize = 12.sp,
+                    color = if (it.startsWith("Error")) MaterialTheme.colorScheme.error else SuccessGreen
+                )
             }
         }
     }

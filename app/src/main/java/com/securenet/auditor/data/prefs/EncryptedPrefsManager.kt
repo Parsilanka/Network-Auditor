@@ -42,6 +42,22 @@ class EncryptedPrefsManager(context: Context) {
         return sharedPreferences.getBoolean(THEME_KEY, true)
     }
 
+    fun saveStringSetting(key: String, value: String) {
+        sharedPreferences.edit().putString(key, value).apply()
+    }
+
+    fun getStringSetting(key: String): String? {
+        return sharedPreferences.getString(key, null)
+    }
+
+    fun saveBoolSetting(key: String, value: Boolean) {
+        sharedPreferences.edit().putBoolean(key, value).apply()
+    }
+
+    fun getBoolSetting(key: String): Boolean? {
+        return if (sharedPreferences.contains(key)) sharedPreferences.getBoolean(key, false) else null
+    }
+
     companion object {
         const val HIBP_KEY = "hibp_api_key"
         const val HUNTER_KEY = "hunter_api_key"

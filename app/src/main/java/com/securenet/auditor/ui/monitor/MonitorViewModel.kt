@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.securenet.auditor.service.NetworkMonitorService
+import com.securenet.auditor.worker.NetworkMonitorScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,11 +21,12 @@ data class DeviceAlert(
 class MonitorViewModel(private val context: Context) : ViewModel() {
 
     private val prefs: SharedPreferences = context.getSharedPreferences("monitor_prefs", Context.MODE_PRIVATE)
+    private val encryptedPrefs = (context.applicationContext as com.securenet.auditor.SecureNetApp).container.encryptedPrefs
 
-    private val _isMonitorRunning = MutableStateFlow(prefs.getBoolean("monitor_enabled", false))
+    private val _isMonitorRunning = MutableStateFlow(encryptedPrefs.getBoolSetting("monitoring_enabled") ?: false)
     val isMonitorRunning: StateFlow<Boolean> = _isMonitorRunning.asStateFlow()
 
-    private val _knownDeviceCount = MutableStateFlow(prefs.getStringSet("known_devices", emptySet())?.size ?: 0)
+    private val _knownDeviceCount = MutableStateFlow(encryptedPrefs.getStringSetting("known_hosts")?.split(",")?.size ?: 0)
     val knownDeviceCount: StateFlow<Int> = _knownDeviceCount.asStateFlow()
 
     private val _alertHistory = MutableStateFlow<List<DeviceAlert>>(emptyList())
@@ -33,7 +35,7 @@ class MonitorViewModel(private val context: Context) : ViewModel() {
     private val _whitelist = MutableStateFlow<Set<String>>(emptySet())
     val whitelist: StateFlow<Set<String>> = _whitelist.asStateFlow()
 
-    private val _scanInterval = MutableStateFlow(prefs.getLong("scan_interval", 5 * 60 * 1000L))
+    private val _scanInterval = MutableStateFlow(prefs.getLong("scan_interval", 15 * 60 * 1000L))
     val scanInterval: StateFlow<Long> = _scanInterval.asStateFlow()
 
     init {
@@ -42,13 +44,31 @@ class MonitorViewModel(private val context: Context) : ViewModel() {
     }
 
     fun startMonitor() {
-        NetworkMonitorService.start(context)
+        encryptedPrefs.saveBoolSetting("monitoring_enabled", true)
+        val intervalMinutes = _scanInterval.value / (60 * 1000)
+        NetworkMonitorScheduler.schedule(context, intervalMinutes)
         _isMonitorRunning.value = true
     }
 
     fun stopMonitor() {
-        NetworkMonitorService.stop(context)
+        encryptedPrefs.saveBoolSetting("monitoring_enabled", false)
+        NetworkMonitorScheduler.cancel(context)
         _isMonitorRunning.value = false
+    }
+
+    fun updateBaseline(hosts: List<String>) {
+        encryptedPrefs.saveStringSetting("known_hosts", hosts.joinToString(","))
+        _knownDeviceCount.value = hosts.size
+    }
+
+    fun clearBaseline() {
+        encryptedPrefs.saveStringSetting("known_hosts", "")
+        _knownDeviceCount.value = 0
+    }
+
+    fun clearAlertHistory() {
+        prefs.edit().remove("alerts").apply()
+        _alertHistory.value = emptyList()
     }
 
     fun acknowledgeAlert(ip: String) {

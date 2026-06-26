@@ -15,8 +15,10 @@ import com.securenet.auditor.network.SubnetScanner
 import com.securenet.auditor.network.WhoisClient
 import com.securenet.auditor.data.remote.GeoLocationService
 import com.securenet.auditor.data.repository.GeoLocationRepository
+import com.securenet.auditor.network.WifiConnectionManager
 import com.securenet.auditor.network.snmp.SnmpClient
 import com.securenet.auditor.security.BiometricHelper
+import com.securenet.auditor.ui.report.PdfReportGenerator
 
 class AppContainer(context: Context) {
     private val db = SecureNetDatabase.getInstance(context)
@@ -33,6 +35,8 @@ class AppContainer(context: Context) {
     val macVendorLookup = MacVendorLookup()
     val biometricHelper = BiometricHelper(context)
     val snmpClient = SnmpClient()
+    val wifiConnectionManager = WifiConnectionManager(context)
+    val pdfReportGenerator = PdfReportGenerator(context)
 
     // Retrofit services
     private val hibpService = OsintApiService.createHibpService()

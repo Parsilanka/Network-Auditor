@@ -40,6 +40,10 @@ import com.securenet.auditor.ui.theme.ThemeViewModel
 import com.securenet.auditor.ui.tools.*
 import com.securenet.auditor.ui.vault.VaultScreen
 import com.securenet.auditor.ui.vault.VaultViewModel
+import com.securenet.auditor.ui.wifi.WifiScannerScreen
+import com.securenet.auditor.ui.wifi.WifiScannerViewModel
+import com.securenet.auditor.ui.qrscanner.QrScannerScreen
+import com.securenet.auditor.ui.qrscanner.QrScannerViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,12 +113,16 @@ fun NavGraph() {
                     val sslViewModel: SslViewModel = viewModel(factory = SslViewModel.provideFactory())
                     val wifiViewModel: WifiSecurityViewModel = viewModel(factory = WifiSecurityViewModel.provideFactory(context))
                     val rogueApViewModel: RogueApViewModel = viewModel(factory = RogueApViewModel.provideFactory(context))
+                    val wolViewModel: WolViewModel = viewModel(factory = WolViewModel.provideFactory())
+                    val whoisViewModel: WhoisViewModel = viewModel(factory = WhoisViewModel.provideFactory(container.osintRepository))
                     NetworkToolsScreen(
                         pingViewModel = pingViewModel,
                         dnsViewModel = dnsViewModel,
                         sslViewModel = sslViewModel,
                         wifiViewModel = wifiViewModel,
                         rogueApViewModel = rogueApViewModel,
+                        wolViewModel = wolViewModel,
+                        whoisViewModel = whoisViewModel,
                         onBack = { navController.popBackStack() },
                         onNavigateToSpeedTest = { navController.navigate(Screen.SpeedTest.route) }
                     )
@@ -134,7 +142,7 @@ fun NavGraph() {
                     )
                 }
                 composable(Screen.WifiScanner.route) {
-                    val wifiViewModel: WifiSecurityViewModel = viewModel(factory = WifiSecurityViewModel.provideFactory(context))
+                    val wifiViewModel: WifiScannerViewModel = viewModel(factory = WifiScannerViewModel.provideFactory(container))
                     WifiScannerScreen(
                         viewModel = wifiViewModel,
                         onBack = { navController.popBackStack() }
@@ -162,11 +170,25 @@ fun NavGraph() {
                     val passwordViewModel: PasswordViewModel = viewModel(factory = PasswordViewModel.provideFactory(container))
                     PasswordManagerScreen(navController, passwordViewModel)
                 }
-                composable(Screen.QrScanner.route) {
-                    val qrViewModel: QrScannerViewModel = viewModel(factory = QrScannerViewModel.provideFactory())
-                    QrScannerScreen(
-                        viewModel = qrViewModel,
+                composable(Screen.SubnetCalculator.route) {
+                    val subnetViewModel: SubnetCalculatorViewModel = viewModel(factory = SubnetCalculatorViewModel.provideFactory())
+                    SubnetCalculatorScreen(
+                        viewModel = subnetViewModel,
                         onBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.Wol.route) {
+                    val wolViewModel: WolViewModel = viewModel(factory = WolViewModel.provideFactory())
+                    WolScreen(
+                        viewModel = wolViewModel,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Screen.QrScanner.route) {
+                    val qrViewModel: QrScannerViewModel = viewModel(factory = QrScannerViewModel.provideFactory(container))
+                    QrScannerScreen(
+                        navController = navController,
+                        viewModel = qrViewModel
                     )
                 }
                 composable(Screen.RogueAp.route) {
@@ -303,6 +325,15 @@ fun DrawerContent(
             selected = currentRoute == Screen.PasswordManager.route,
             onClick = {
                 navController.navigate(Screen.PasswordManager.route)
+                onItemClick()
+            }
+        )
+        DrawerItem(
+            icon = Icons.Outlined.Calculate,
+            label = "Subnet Calculator",
+            selected = currentRoute == Screen.SubnetCalculator.route,
+            onClick = {
+                navController.navigate(Screen.SubnetCalculator.route)
                 onItemClick()
             }
         )

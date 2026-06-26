@@ -115,7 +115,7 @@ class VaultViewModel(
         _comparisonResult.value = ComparisonResult(older, newer, comparisonDevices)
     }
 
-    private fun deserializeHosts(json: String?): List<HostInfo> {
+    fun deserializeHosts(json: String?): List<HostInfo> {
         if (json.isNullOrBlank()) return emptyList()
         return try {
             val type = object : TypeToken<List<HostInfo>>() {}.type

@@ -33,6 +33,10 @@ import com.securenet.auditor.ui.components.EmptyStateView
 import com.securenet.auditor.ui.components.copyToClipboard
 import com.securenet.auditor.ui.theme.MonoType
 import com.securenet.auditor.ui.theme.TealPrimary
+import com.securenet.auditor.SecureNetApp
+import com.securenet.auditor.ui.scanner.createReportData
+import com.securenet.auditor.ui.scanner.sharePdf
+import android.util.Log
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -238,6 +242,7 @@ fun UnlockedVault(
                         VaultEntryCard(
                             entry = entry, 
                             isSelected = selectedScans.contains(entry.id),
+                            viewModel = viewModel,
                             onDelete = { viewModel.deleteEntry(entry.id) }, 
                             onUpdateTag = { viewModel.updateTag(entry.id, it) },
                             onLongClick = { viewModel.toggleSelection(entry.id) },
@@ -293,6 +298,7 @@ fun StatsRow(history: List<ScanResultEntity>) {
 fun VaultEntryCard(
     entry: ScanResultEntity, 
     isSelected: Boolean,
+    viewModel: VaultViewModel, // Added to use deserializer
     onDelete: () -> Unit, 
     onUpdateTag: (String) -> Unit,
     onLongClick: () -> Unit,
@@ -302,6 +308,7 @@ fun VaultEntryCard(
     var showTagDialog by remember { mutableStateOf(false) }
     var tagText by remember { mutableStateOf(entry.tag ?: "") }
     val context = LocalContext.current
+    val container = (context.applicationContext as SecureNetApp).container
     
     val date = remember(entry.timestamp) {
         SimpleDateFormat("MMM dd yyyy, HH:mm", Locale.getDefault()).format(Date(entry.timestamp))
@@ -333,8 +340,25 @@ fun VaultEntryCard(
                     }
                 }
                 if (!isSelected) {
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    Row {
+                        IconButton(onClick = {
+                            Log.d("VaultScreen", "Exporting PDF for entry: ${entry.id}")
+                            val hosts = viewModel.deserializeHosts(entry.detailedHostsJson)
+                            val reportData = createReportData(
+                                hosts = hosts,
+                                networkName = entry.tag ?: "Saved Network",
+                                networkIp = entry.ipAddress.split(",").firstOrNull() ?: "Unknown",
+                                duration = 0L // We don't store duration in Entity yet
+                            )
+                            val uri = container.pdfReportGenerator.generateReport(reportData)
+                            Log.d("VaultScreen", "PDF Uri: $uri")
+                            uri?.let { sharePdf(context, it) }
+                        }) {
+                            Icon(Icons.Default.PictureAsPdf, contentDescription = "Export PDF", tint = TealPrimary)
+                        }
+                        IconButton(onClick = onDelete) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             }

@@ -18,4 +18,6 @@ sealed class Screen(val route: String) {
     object SnmpInspector : Screen("snmp_inspector")
     object PasswordAuditor : Screen("password_auditor")
     object PasswordManager : Screen("password_manager")
+    object SubnetCalculator : Screen("subnet_calculator")
+    object Wol : Screen("wol")
 }

@@ -7,5 +7,6 @@ data class HostInfo(
     val vendor: String?,
     val openPorts: List<Int>,
     val isReachable: Boolean,
-    val responseTimeMs: Long
+    val responseTimeMs: Long,
+    val serviceBanners: Map<Int, String> = emptyMap()
 )

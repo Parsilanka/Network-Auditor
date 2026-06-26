@@ -174,16 +174,16 @@ fun DashboardScreen(
             )
 
             DashboardFeatureCard(
-                icon = Icons.Outlined.WifiTethering,
+                icon = Icons.Outlined.Wifi,
                 title = "Wi-Fi Scanner",
-                subtitle = "Analyze nearby Wi-Fi signals",
+                subtitle = "Discover and connect to networks",
                 onClick = { navController.navigate(Screen.WifiScanner.route) }
             )
 
             DashboardFeatureCard(
                 icon = Icons.Outlined.QrCodeScanner,
-                title = "QR Wi-Fi Scanner",
-                subtitle = "Scan and analyze Wi-Fi QR codes",
+                title = "QR Wi-Fi Connect",
+                subtitle = "Scan QR code to join network",
                 onClick = { navController.navigate(Screen.QrScanner.route) }
             )
 

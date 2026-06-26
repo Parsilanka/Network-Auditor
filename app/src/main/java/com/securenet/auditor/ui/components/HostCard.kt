@@ -112,12 +112,24 @@ fun HostCard(
                     if (host.openPorts.isNotEmpty()) {
                         Text("Detected Services:", style = MaterialTheme.typography.labelMedium)
                         host.openPorts.forEach { port ->
-                            Text(
-                                text = "$port: ${getServiceName(port)}",
-                                fontFamily = MonoType,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            )
+                            val banner = host.serviceBanners[port]
+                            Column {
+                                Text(
+                                    text = "$port: ${getServiceName(port)}",
+                                    fontFamily = MonoType,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(vertical = 1.dp)
+                                )
+                                if (banner != null) {
+                                    Text(
+                                        text = "  └ $banner",
+                                        fontFamily = MonoType,
+                                        fontSize = 10.sp,
+                                        color = TealPrimary.copy(alpha = 0.8f),
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                }
+                            }
                         }
                     } else {
                         Text(

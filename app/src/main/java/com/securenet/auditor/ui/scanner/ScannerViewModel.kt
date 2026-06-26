@@ -79,9 +79,14 @@ class ScannerViewModel(
 
     fun runPortScan(host: HostInfo) {
         viewModelScope.launch {
-            val openPorts = portScanner.scanPorts(host.ipAddress)
+            val results = portScanner.scanPortsWithBanners(host.ipAddress)
+            val openPorts = results.map { it.port }
+            val banners = results.filter { it.banner != null }.associate { it.port to it.banner!! }
+            
             _discoveredHosts.value = _discoveredHosts.value.map {
-                if (it.ipAddress == host.ipAddress) it.copy(openPorts = openPorts) else it
+                if (it.ipAddress == host.ipAddress) {
+                    it.copy(openPorts = openPorts, serviceBanners = banners)
+                } else it
             }
             
             // Check default credentials if 80 or 443 is open
