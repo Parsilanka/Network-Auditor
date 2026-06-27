@@ -20,4 +20,9 @@ sealed class Screen(val route: String) {
     object PasswordManager : Screen("password_manager")
     object SubnetCalculator : Screen("subnet_calculator")
     object Wol : Screen("wol")
+    object Bandwidth : Screen("bandwidth")
+    object SslScanner : Screen("ssl_scanner")
+    object HeaderGrader : Screen("header_grader")
+    object SubdomainEnum : Screen("subdomain_enum")
+    object PacketAnalyzer : Screen("packet_analyzer")
 }

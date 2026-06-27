@@ -13,6 +13,9 @@ import kotlinx.coroutines.launch
 class RogueApViewModel(context: Context) : ViewModel() {
     private val detector = RogueApDetector(context)
 
+    private val _alerts = MutableStateFlow<List<RogueApDetector.RogueApAlert>>(emptyList())
+    val alerts: StateFlow<List<RogueApDetector.RogueApAlert>> = _alerts.asStateFlow()
+
     private val _report = MutableStateFlow<RogueApDetector.RogueApReport?>(null)
     val report: StateFlow<RogueApDetector.RogueApReport?> = _report.asStateFlow()
 
@@ -22,7 +25,24 @@ class RogueApViewModel(context: Context) : ViewModel() {
     fun startScan() {
         viewModelScope.launch {
             _isScanning.value = true
-            _report.value = detector.scanForRogueAps()
+            val scanResults = detector.scanForRogueAps()
+            _alerts.value = scanResults
+            
+            // Create a report based on scan results
+            val riskLevel = when {
+                scanResults.any { it.threatType == RogueApDetector.RogueThreatType.EVIL_TWIN } -> "CRITICAL"
+                scanResults.isNotEmpty() -> "HIGH"
+                else -> "LOW"
+            }
+            
+            _report.value = RogueApDetector.RogueApReport(
+                riskLevel = riskLevel,
+                suspiciousNetworks = emptyList(),
+                nearbyNetworks = emptyList(),
+                connectedSsid = "Scanning...",
+                connectedBssid = null
+            )
+
             _isScanning.value = false
         }
     }

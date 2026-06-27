@@ -15,13 +15,42 @@ import kotlinx.coroutines.launch
 
 class PasswordViewModel(
     private val passwordRepository: PasswordRepository,
-    private val osintRepository: OsintRepository
+    private val osintRepository: OsintRepository,
+    private val biometricHelper: com.securenet.auditor.security.BiometricHelper
 ) : ViewModel() {
 
     val allPasswords = passwordRepository.allPasswords
 
     private val _breachResult = MutableStateFlow<OsintResult<Int>>(OsintResult.Idle)
     val breachResult: StateFlow<OsintResult<Int>> = _breachResult.asStateFlow()
+
+    private val _isAuthenticated = MutableStateFlow(false)
+    val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
+
+    private val _isAuthenticating = MutableStateFlow(false)
+    val isAuthenticating: StateFlow<Boolean> = _isAuthenticating.asStateFlow()
+
+    fun authenticate(activity: androidx.fragment.app.FragmentActivity) {
+        if (!biometricHelper.isBiometricAvailable()) {
+            _isAuthenticated.value = true
+            return
+        }
+
+        _isAuthenticating.value = true
+        biometricHelper.authenticate(
+            activity = activity,
+            onSuccess = {
+                _isAuthenticated.value = true
+                _isAuthenticating.value = false
+            },
+            onFailure = { _isAuthenticating.value = false },
+            onError = { _isAuthenticating.value = false }
+        )
+    }
+
+    fun lock() {
+        _isAuthenticated.value = false
+    }
 
     fun addPassword(password: PasswordEntity) {
         viewModelScope.launch {
@@ -48,7 +77,8 @@ class PasswordViewModel(
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return PasswordViewModel(
                     container.passwordRepository,
-                    container.osintRepository
+                    container.osintRepository,
+                    container.biometricHelper
                 ) as T
             }
         }

@@ -16,6 +16,8 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.securenet.auditor.SecureNetApp
+import com.securenet.auditor.data.db.SpeedTestEntity
+import com.securenet.auditor.ui.monitor.DeviceAlert
 import com.securenet.auditor.ui.monitor.MonitorViewModel
 import com.securenet.auditor.ui.navigation.Screen
 import com.securenet.auditor.ui.scanner.ScannerViewModel
@@ -248,6 +252,45 @@ fun DashboardScreen(
                 title = "SNMP Inspector",
                 subtitle = "Query network device metrics",
                 onClick = { navController.navigate(Screen.SnmpInspector.route) }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Advanced Enterprise Tools", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.Speed,
+                title = "Bandwidth Monitor",
+                subtitle = "Real-time upload/download graph",
+                onClick = { navController.navigate(Screen.Bandwidth.route) }
+            )
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.Lock,
+                title = "SSL/TLS Scanner",
+                subtitle = "Grade SSL like Qualys SSL Labs",
+                onClick = { navController.navigate(Screen.SslScanner.route) }
+            )
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.Security,
+                title = "HTTP Headers Grader",
+                subtitle = "Website security header analysis",
+                onClick = { navController.navigate(Screen.HeaderGrader.route) }
+            )
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.AccountTree,
+                title = "Subdomain Enumerator",
+                subtitle = "DNS reconnaissance & discovery",
+                onClick = { navController.navigate(Screen.SubdomainEnum.route) }
+            )
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.NetworkCheck,
+                title = "Traffic Analyzer",
+                subtitle = "Per-app network usage stats",
+                onClick = { navController.navigate(Screen.PacketAnalyzer.route) }
             )
 
             Spacer(modifier = Modifier.height(24.dp))

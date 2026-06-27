@@ -13,6 +13,7 @@ import com.securenet.auditor.data.repository.ScanRepository
 import com.securenet.auditor.network.PortScanner
 import com.securenet.auditor.network.SubnetScanner
 import com.securenet.auditor.network.WhoisClient
+import com.securenet.auditor.network.*
 import com.securenet.auditor.data.remote.GeoLocationService
 import com.securenet.auditor.data.repository.GeoLocationRepository
 import com.securenet.auditor.network.WifiConnectionManager
@@ -37,6 +38,13 @@ class AppContainer(context: Context) {
     val snmpClient = SnmpClient()
     val wifiConnectionManager = WifiConnectionManager(context)
     val pdfReportGenerator = PdfReportGenerator(context)
+
+    val bandwidthMonitor = BandwidthMonitor()
+    val sslTlsScanner = SslTlsScanner()
+    val httpHeaderAnalyzer = HttpHeaderAnalyzer()
+    val subdomainEnumerator = SubdomainEnumerator()
+    val packetAnalyzer = PacketAnalyzer(context)
+    val rogueApDetector = RogueApDetector(context)
 
     // Retrofit services
     private val hibpService = OsintApiService.createHibpService()

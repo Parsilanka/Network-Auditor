@@ -44,6 +44,12 @@ import com.securenet.auditor.ui.wifi.WifiScannerScreen
 import com.securenet.auditor.ui.wifi.WifiScannerViewModel
 import com.securenet.auditor.ui.qrscanner.QrScannerScreen
 import com.securenet.auditor.ui.qrscanner.QrScannerViewModel
+import com.securenet.auditor.ui.bandwidth.*
+import com.securenet.auditor.ui.ssl.*
+import com.securenet.auditor.ui.headers.*
+import com.securenet.auditor.ui.subdomain.*
+import com.securenet.auditor.ui.packet.*
+import com.securenet.auditor.ui.rogueap.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,6 +196,26 @@ fun NavGraph() {
                         navController = navController,
                         viewModel = qrViewModel
                     )
+                }
+                composable(Screen.Bandwidth.route) {
+                    val bandwidthViewModel: BandwidthViewModel = viewModel(factory = BandwidthViewModel.provideFactory(container.bandwidthMonitor))
+                    BandwidthScreen(bandwidthViewModel, onBack = { navController.popBackStack() })
+                }
+                composable(Screen.SslScanner.route) {
+                    val sslViewModel: SslScannerViewModel = viewModel(factory = SslScannerViewModel.provideFactory(container.sslTlsScanner))
+                    SslScannerScreen(sslViewModel, onBack = { navController.popBackStack() })
+                }
+                composable(Screen.HeaderGrader.route) {
+                    val headerViewModel: HeaderGraderViewModel = viewModel(factory = HeaderGraderViewModel.provideFactory(container.httpHeaderAnalyzer))
+                    HeaderGraderScreen(headerViewModel, onBack = { navController.popBackStack() })
+                }
+                composable(Screen.SubdomainEnum.route) {
+                    val subdomainViewModel: SubdomainViewModel = viewModel(factory = SubdomainViewModel.provideFactory(container.subdomainEnumerator))
+                    SubdomainScreen(navController, subdomainViewModel, onBack = { navController.popBackStack() })
+                }
+                composable(Screen.PacketAnalyzer.route) {
+                    val packetViewModel: PacketAnalyzerViewModel = viewModel(factory = PacketAnalyzerViewModel.provideFactory(container.packetAnalyzer))
+                    PacketAnalyzerScreen(navController, packetViewModel, onBack = { navController.popBackStack() })
                 }
                 composable(Screen.RogueAp.route) {
                     val rogueApViewModel: RogueApViewModel = viewModel(factory = RogueApViewModel.provideFactory(context))
@@ -387,6 +413,55 @@ fun DrawerContent(
             selected = currentRoute == Screen.Vault.route,
             onClick = {
                 navController.navigate(Screen.Vault.route)
+                onItemClick()
+            }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("ENTERPRISE", style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(start = 12.dp, bottom = 4.dp))
+
+        DrawerItem(
+            icon = Icons.Outlined.Speed,
+            label = "Bandwidth Monitor",
+            selected = currentRoute == Screen.Bandwidth.route,
+            onClick = {
+                navController.navigate(Screen.Bandwidth.route)
+                onItemClick()
+            }
+        )
+        DrawerItem(
+            icon = Icons.Outlined.Lock,
+            label = "SSL Scanner",
+            selected = currentRoute == Screen.SslScanner.route,
+            onClick = {
+                navController.navigate(Screen.SslScanner.route)
+                onItemClick()
+            }
+        )
+        DrawerItem(
+            icon = Icons.Outlined.Security,
+            label = "Header Grader",
+            selected = currentRoute == Screen.HeaderGrader.route,
+            onClick = {
+                navController.navigate(Screen.HeaderGrader.route)
+                onItemClick()
+            }
+        )
+        DrawerItem(
+            icon = Icons.Outlined.AccountTree,
+            label = "Subdomain Enum",
+            selected = currentRoute == Screen.SubdomainEnum.route,
+            onClick = {
+                navController.navigate(Screen.SubdomainEnum.route)
+                onItemClick()
+            }
+        )
+        DrawerItem(
+            icon = Icons.Outlined.NetworkCheck,
+            label = "Traffic Analyzer",
+            selected = currentRoute == Screen.PacketAnalyzer.route,
+            onClick = {
+                navController.navigate(Screen.PacketAnalyzer.route)
                 onItemClick()
             }
         )

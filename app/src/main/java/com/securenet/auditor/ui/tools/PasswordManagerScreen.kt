@@ -10,72 +10,117 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.securenet.auditor.data.db.PasswordEntity
 import com.securenet.auditor.ui.navigation.Screen
+import com.securenet.auditor.ui.theme.TealPrimary
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.outlined.Lock
 import kotlin.random.Random
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordManagerScreen(navController: NavController, viewModel: PasswordViewModel) {
     val passwords by viewModel.allPasswords.collectAsState(initial = emptyList())
+    val isAuthenticated by viewModel.isAuthenticated.collectAsStateWithLifecycle()
+    val isAuthenticating by viewModel.isAuthenticating.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    
     var showAddDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Password Manager", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    TextButton(onClick = { navController.navigate(Screen.PasswordAuditor.route) }) {
-                        Text("Audit")
-                    }
-                }
+    if (!isAuthenticated) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Lock,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = TealPrimary
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Password")
-            }
-        }
-    ) { padding ->
-        if (passwords.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No passwords saved yet.", style = MaterialTheme.typography.bodyLarge)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(passwords) { password ->
-                    PasswordItem(password, onDelete = { viewModel.deletePassword(password) })
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("Password Manager Locked", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("Authentication required to access saved credentials", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            
+            Spacer(modifier = Modifier.height(48.dp))
+            
+            if (isAuthenticating) {
+                CircularProgressIndicator(color = TealPrimary)
+            } else {
+                Button(
+                    onClick = { viewModel.authenticate(context as FragmentActivity) },
+                    colors = ButtonDefaults.buttonColors(containerColor = TealPrimary)
+                ) {
+                    Text("Unlock Manager")
                 }
             }
         }
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Password Manager", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.lock() }) {
+                            Icon(Icons.Default.Lock, contentDescription = "Lock")
+                        }
+                        TextButton(onClick = { navController.navigate(Screen.PasswordAuditor.route) }) {
+                            Text("Audit")
+                        }
+                    }
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(onClick = { showAddDialog = true }, containerColor = TealPrimary, contentColor = Color.White) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Password")
+                }
+            }
+        ) { padding ->
+            if (passwords.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text("No passwords saved yet.", style = MaterialTheme.typography.bodyLarge)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(passwords) { password ->
+                        PasswordItem(password, onDelete = { viewModel.deletePassword(password) })
+                    }
+                }
+            }
 
-        if (showAddDialog) {
-            AddPasswordDialog(
-                onDismiss = { showAddDialog = false },
-                onConfirm = { title, user, pass, site ->
-                    viewModel.addPassword(PasswordEntity(title = title, username = user, encryptedPassword = pass, website = site))
-                    showAddDialog = false
-                }
-            )
+            if (showAddDialog) {
+                AddPasswordDialog(
+                    onDismiss = { showAddDialog = false },
+                    onConfirm = { title, user, pass, site ->
+                        viewModel.addPassword(PasswordEntity(title = title, username = user, encryptedPassword = pass, website = site))
+                        showAddDialog = false
+                    }
+                )
+            }
         }
     }
 }

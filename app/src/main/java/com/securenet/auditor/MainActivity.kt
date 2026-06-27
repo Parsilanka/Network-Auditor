@@ -1,7 +1,12 @@
 package com.securenet.auditor
 
 import android.Manifest
+import android.app.AppOpsManager
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
+import android.os.Process
+import android.provider.Settings
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
@@ -20,11 +25,23 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestPermissions()
+        checkUsageStatsPermission()
         setContent {
             val isDarkTheme by themeViewModel.isDarkTheme.collectAsState()
             SecureNetTheme(isDarkTheme = isDarkTheme) {
                 NavGraph()
             }
+        }
+    }
+
+    private fun checkUsageStatsPermission() {
+        val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = appOps.checkOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            Process.myUid(), packageName
+        )
+        if (mode != AppOpsManager.MODE_ALLOWED) {
+            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
         }
     }
 
