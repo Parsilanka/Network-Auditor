@@ -7,6 +7,8 @@ import android.net.ConnectivityManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 import java.io.File
+import java.net.Inet6Address
+import java.net.NetworkInterface
 
 class PacketAnalyzer(private val context: Context) {
 
@@ -99,52 +101,93 @@ class PacketAnalyzer(private val context: Context) {
             .sortedByDescending { it.rxBytes + it.txBytes }
     }
 
-    fun getActiveConnections(): List<ConnectionInfo> {
+    fun getActiveConnectionInfo(
+        context: Context
+    ): List<ConnectionInfo> {
         val connections = mutableListOf<ConnectionInfo>()
-        try {
-            // Read from /proc/net/tcp
-            val tcpFile = File("/proc/net/tcp")
-            if (tcpFile.exists()) {
-                tcpFile.readLines().drop(1).forEach { line ->
-                    val parts = line.trim().split(
-                        Regex("\\s+"))
-                    if (parts.size >= 4) {
-                        val localHex = parts[1]
-                        val remoteHex = parts[2]
-                        val stateHex = parts[3]
-
-                        val local = hexToIpPort(localHex)
-                        val remote = hexToIpPort(remoteHex)
-                        val state = tcpState(stateHex)
-
-                        if (local != null && 
-                            remote != null) {
-                            connections.add(ConnectionInfo(
-                                localAddress = local,
-                                remoteAddress = remote,
-                                state = state,
-                                protocol = "TCP"
-                            ))
+        
+        // Method 1: Try /proc/net/tcp6 and /proc/net/tcp
+        // These may work on some devices
+        listOf("/proc/net/tcp", "/proc/net/tcp6").forEach { path ->
+            try {
+                val file = File(path)
+                if (file.exists() && file.canRead()) {
+                    file.readLines().drop(1)
+                        .forEach { line ->
+                        val parts = line.trim()
+                            .split(Regex("\\s+"))
+                        if (parts.size >= 4) {
+                            val local = hexToAddress(parts[1])
+                            val remote = hexToAddress(parts[2])
+                            val state = tcpState(parts[3])
+                            if (local != null && 
+                                remote != null &&
+                                !remote.startsWith("0.0.0.0") &&
+                                !remote.startsWith(":::")) {
+                                connections.add(ConnectionInfo(
+                                    localAddress = local,
+                                    remoteAddress = remote,
+                                    state = state,
+                                    protocol = if (path
+                                        .contains("6")) 
+                                        "TCP6" else "TCP"
+                                ))
+                            }
                         }
                     }
                 }
-            }
-        } catch (e: Exception) {}
+            } catch (e: Exception) {}
+        }
+        
+        // Method 2: If proc files not readable,
+        // use NetworkInterface to show active interfaces
+        if (connections.isEmpty()) {
+            try {
+                val networkInterfaces = NetworkInterface
+                    .getNetworkInterfaces()
+                networkInterfaces?.asSequence()
+                    ?.filter { it.isUp && !it.isLoopback }
+                    ?.forEach { iface ->
+                    iface.inetAddresses.asSequence()
+                        .filter { !it.isLoopbackAddress }
+                        .forEach { addr ->
+                        connections.add(ConnectionInfo(
+                            localAddress = 
+                                "${addr.hostAddress}:*",
+                            remoteAddress = "Active Interface",
+                            state = "ACTIVE",
+                            protocol = if (addr is 
+                                Inet6Address) "IPv6" else "IPv4"
+                        ))
+                    }
+                }
+            } catch (e: Exception) {}
+        }
+        
         return connections
+            .distinctBy { "${it.localAddress}${it.remoteAddress}" }
+            .sortedBy { it.state }
     }
 
-    private fun hexToIpPort(hex: String): String? {
+    private fun hexToAddress(hex: String): String? {
         return try {
             val parts = hex.split(":")
             val ipHex = parts[0]
             val portHex = parts[1]
 
-            // Convert little-endian hex to IP
-            val ip = (0..3).map { i ->
-                Integer.parseInt(
-                    ipHex.substring(i * 2, i * 2 + 2),
-                    16)
-            }.reversed().joinToString(".")
+            val ip = if (ipHex.length == 32) {
+                // IPv6
+                (0..7).joinToString(":") { i ->
+                    ipHex.substring(i * 4, i * 4 + 4)
+                }
+            } else {
+                // IPv4
+                (0..3).map { i ->
+                    Integer.parseInt(
+                        ipHex.substring(i * 2, i * 2 + 2),
+                        16)
+                }.reversed().joinToString(".")
+            }
 
             val port = Integer.parseInt(portHex, 16)
             "$ip:$port"

@@ -51,17 +51,6 @@ fun RogueApScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22))) {
-                Text(
-                    "Scans for fake Wi-Fi networks (evil twins) that mimic your real network to intercept your traffic. Used by attackers in coffee shops, airports, and hotels to steal passwords and banking credentials.",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             Button(
                 onClick = { viewModel.startScan() },
                 modifier = Modifier.fillMaxWidth(),

@@ -220,8 +220,6 @@ fun DashboardScreen(
             DashboardFeatureCard(
                 icon = Icons.Outlined.Assessment,
                 title = "Security Report",
-                statusText = "BETA",
-                statusColor = TealPrimary,
                 subtitle = "Comprehensive vulnerability analysis",
                 onClick = { navController.navigate(Screen.VulnerabilityReport.route) }
             )

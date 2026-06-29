@@ -53,20 +53,6 @@ fun SubdomainScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
-            // Legal Warning
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFC107).copy(alpha = 0.1f))) {
-                Row(modifier = Modifier.padding(12.dp)) {
-                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFFC107))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        "⚠ Legal Notice: Only enumerate domains you own or have explicit written permission to test. Unauthorized subdomain enumeration may violate laws including the Computer Misuse Act.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             // Input
             OutlinedTextField(
                 value = domain,

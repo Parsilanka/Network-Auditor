@@ -96,17 +96,6 @@ fun QrScannerScreen(
                 Text("Point camera at a Wi-Fi QR code", color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().background(Color(0x880D1117)).padding(16.dp))
 
                 Spacer(modifier = Modifier.weight(1f))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xCC161B22))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Supported QR formats:", color = Color(0xFF8B949E), style = MaterialTheme.typography.labelSmall)
-                        Text("• Wi-Fi QR codes (WIFI:T:WPA;S:...)", color = Color(0xFFE6EDF3), style = MaterialTheme.typography.bodySmall)
-                        Text("• Android/iOS Wi-Fi sharing QR codes", color = Color(0xFFE6EDF3), style = MaterialTheme.typography.bodySmall)
-                    }
-                }
             }
         } else {
             QrScanResultScreen(
@@ -226,7 +215,7 @@ fun QrScanResultScreen(
                         WifiConnectionManager.WifiSecurityType.OPEN -> Color(0xFF4CAF50) to "OPEN"
                         WifiConnectionManager.WifiSecurityType.WPA3 -> Color(0xFF00BFA5) to "WPA3"
                         WifiConnectionManager.WifiSecurityType.WPA2 -> Color(0xFF2196F3) to "WPA2"
-                        WifiConnectionManager.WifiSecurityType.WEP -> Color(0xFFF44336) to "WEP ⚠"
+                        WifiConnectionManager.WifiSecurityType.WEP -> Color(0xFFF44336) to "WEP"
                         else -> Color(0xFFFFC107) to "WPA"
                     }
                     Surface(color = chipColor.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
@@ -245,17 +234,6 @@ fun QrScanResultScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        if (credentials.securityType == WifiConnectionManager.WifiSecurityType.WEP) {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF3D0C0C))) {
-                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Warning, contentDescription = null, tint = Color(0xFFF44336))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("WEP encryption is broken and insecure.", color = Color(0xFFFF7B72), style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
 
         ConnectionStatusBanner(connectionState)
 

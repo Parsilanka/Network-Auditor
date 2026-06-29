@@ -1,17 +1,23 @@
 package com.securenet.auditor.ui.ssl
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,7 +42,7 @@ fun SslScannerScreen(
     viewModel: SslScannerViewModel,
     onBack: () -> Unit
 ) {
-    var host by remember { mutableStateOf("") }
+    var domain by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("443") }
     val result by viewModel.scanResult.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -66,37 +74,211 @@ fun SslScannerScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Input Card
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22))) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF161B22)
+                ),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(
+                    1.dp, Color(0xFF30363D))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // FIX 1 — Domain input field
                     OutlinedTextField(
-                        value = host,
-                        onValueChange = { host = it },
+                        value = domain,
+                        onValueChange = { domain = it },
                         label = { Text("Enter domain or IP") },
+                        placeholder = { 
+                            Text(
+                                "e.g. google.com",
+                                color = Color(0xFF8B949E)
+                            ) 
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Outlined.Language,
+                                contentDescription = null,
+                                tint = Color(0xFF00BFA5)
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF00BFA5),
+                            unfocusedBorderColor = Color(0xFF30363D),
+                            focusedLabelColor = Color(0xFF00BFA5),
+                            unfocusedLabelColor = Color(0xFF8B949E),
+                            cursorColor = Color(0xFF00BFA5),
+                            focusedTextColor = Color(0xFFE6EDF3),
+                            unfocusedTextColor = Color(0xFFE6EDF3)
+                        ),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Uri,
+                            imeAction = ImeAction.Next
+                        )
                     )
+
+                    // FIX 2 — Port input field
                     OutlinedTextField(
                         value = port,
                         onValueChange = { port = it },
                         label = { Text("Port") },
+                        placeholder = { 
+                            Text("443", color = Color(0xFF8B949E)) 
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF00BFA5),
+                            unfocusedBorderColor = Color(0xFF30363D),
+                            focusedLabelColor = Color(0xFF00BFA5),
+                            unfocusedLabelColor = Color(0xFF8B949E),
+                            cursorColor = Color(0xFF00BFA5),
+                            focusedTextColor = Color(0xFFE6EDF3),
+                            unfocusedTextColor = Color(0xFFE6EDF3)
+                        ),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        )
                     )
-                    
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("443", "8443", "465", "993").forEach { p ->
-                            AssistChip(onClick = { port = p }, label = { Text(p) })
+
+                    // FIX 3 — Port quick-select chips
+                    val portOptions = listOf("443", "8443", "465", "993")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        portOptions.forEach { portOption ->
+                            FilterChip(
+                                selected = port == portOption,
+                                onClick = { port = portOption },
+                                label = {
+                                    Text(
+                                        text = portOption,
+                                        fontFamily = MonoType,
+                                        fontSize = 13.sp
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFF00BFA5),
+                                    selectedLabelColor = Color(0xFF003D36),
+                                    containerColor = Color(0xFF21262D),
+                                    labelColor = Color(0xFF8B949E)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = port == portOption,
+                                    borderColor = Color(0xFF30363D),
+                                    selectedBorderColor = Color(0xFF00BFA5)
+                                )
+                            )
                         }
                     }
 
-                    Button(
-                        onClick = { viewModel.scan(host, port.toIntOrNull() ?: 443) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading && host.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(containerColor = TealPrimary)
+                    // FIX 5 — Add quick domain buttons
+                    Text(
+                        text = "Quick test domains:",
+                        color = Color(0xFF8B949E),
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                        else Text("Analyze SSL")
+                        listOf(
+                            "google.com",
+                            "github.com", 
+                            "expired.badssl.com",
+                            "self-signed.badssl.com"
+                        ).forEach { quickDomain ->
+                            SuggestionChip(
+                                onClick = { 
+                                    domain = quickDomain
+                                    port = "443"
+                                },
+                                label = {
+                                    Text(
+                                        text = quickDomain,
+                                        fontSize = 11.sp,
+                                        fontFamily = MonoType
+                                    )
+                                },
+                                colors = SuggestionChipDefaults
+                                    .suggestionChipColors(
+                                    containerColor = Color(0xFF161B22),
+                                    labelColor = Color(0xFF8B949E)
+                                ),
+                                border = SuggestionChipDefaults
+                                    .suggestionChipBorder(
+                                    enabled = true,
+                                    borderColor = Color(0xFF30363D)
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // FIX 4 — Analyze SSL button
+                    Button(
+                        onClick = {
+                            if (domain.isNotBlank()) {
+                                viewModel.scan(
+                                    domain.trim(),
+                                    port.toIntOrNull() ?: 443
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        enabled = domain.isNotBlank() && !isLoading,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF00BFA5),
+                            contentColor = Color(0xFF003D36),
+                            disabledContainerColor = Color(0xFF21262D),
+                            disabledContentColor = Color(0xFF8B949E)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color(0xFF003D36),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Analyzing SSL/TLS...",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        } else {
+                            Icon(
+                                Icons.Outlined.Lock,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Analyze SSL/TLS",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
                     }
                 }
             }

@@ -124,31 +124,13 @@ fun WifiScannerScreen(
                             isConnected = network.ssid == currentSsid,
                             onConnect = {
                                 if (network.securityType == WifiConnectionManager.WifiSecurityType.OPEN) {
-                                    // Show warning for open network
-                                    scope.launch {
-                                        val result = snackbarHostState.showSnackbar(
-                                            message = "⚠ This network has no encryption. Your data may be visible to others.",
-                                            actionLabel = "Connect Anyway",
-                                            duration = SnackbarDuration.Long
-                                        )
-                                        if (result == SnackbarResult.ActionPerformed) {
-                                            viewModel.connectToNetwork(network, null)
-                                        }
-                                    }
+                                    viewModel.connectToNetwork(network, null)
                                 } else {
                                     selectedNetwork = network
                                     showPasswordDialog = true
                                 }
                             }
                         )
-                    }
-                    
-                    item {
-                        NetworkSecurityAnalysis(networks)
-                    }
-                    
-                    item {
-                        Android10Notice()
                     }
                 }
             }
@@ -317,7 +299,7 @@ fun SecurityChip(type: WifiConnectionManager.WifiSecurityType) {
         WifiConnectionManager.WifiSecurityType.WPA3 -> TealPrimary to "WPA3"
         WifiConnectionManager.WifiSecurityType.WPA2 -> Color(0xFF2196F3) to "WPA2"
         WifiConnectionManager.WifiSecurityType.WPA -> Color(0xFFFFB300) to "WPA"
-        WifiConnectionManager.WifiSecurityType.WEP -> Color(0xFFF44336) to "WEP ⚠"
+        WifiConnectionManager.WifiSecurityType.WEP -> Color(0xFFF44336) to "WEP"
         else -> Color.Gray to "UNKNOWN"
     }
     
@@ -383,10 +365,6 @@ fun PasswordDialog(
                         }
                     }
                 )
-                
-                if (network.securityType == WifiConnectionManager.WifiSecurityType.WEP) {
-                    Text("⚠ WEP encryption is outdated and insecure", color = Color.Red, style = MaterialTheme.typography.labelSmall)
-                }
             }
         },
         confirmButton = {
@@ -404,60 +382,4 @@ fun PasswordDialog(
             }
         }
     )
-}
-
-@Composable
-fun NetworkSecurityAnalysis(networks: List<WifiConnectionManager.WifiNetwork>) {
-    val openCount = networks.count { it.securityType == WifiConnectionManager.WifiSecurityType.OPEN }
-    val wepCount = networks.count { it.securityType == WifiConnectionManager.WifiSecurityType.WEP }
-    val secureCount = networks.count { it.securityType in listOf(WifiConnectionManager.WifiSecurityType.WPA2, WifiConnectionManager.WifiSecurityType.WPA3, WifiConnectionManager.WifiSecurityType.WPA2_WPA3) }
-
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Network Security Overview", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Total networks found: ${networks.size}")
-            Text("Open networks: $openCount", color = if (openCount > 0) Color.Red else MaterialTheme.colorScheme.onSurface)
-            Text("WEP networks: $wepCount", color = if (wepCount > 0) Color.Red else MaterialTheme.colorScheme.onSurface)
-            Text("WPA2/WPA3: $secureCount", color = Color(0xFF4CAF50))
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            if (openCount > 0) {
-                Text("⚠ $openCount open network(s) detected nearby. Avoid connecting to open networks in public areas.", color = Color.Red, style = MaterialTheme.typography.bodySmall)
-            }
-            if (wepCount > 0) {
-                Text("⚠ $wepCount WEP network(s) detected. WEP is broken encryption. Do not use these networks.", color = Color.Red, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-    }
-}
-
-@Composable
-fun Android10Notice() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2196F3)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF2196F3).copy(alpha = 0.05f))
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF2196F3), modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Android 10+ Connection Notice", fontWeight = FontWeight.Bold, color = Color(0xFF2196F3), style = MaterialTheme.typography.labelLarge)
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "On Android 10 and above, a system dialog will appear to confirm the connection. This is required by Android for security. Tap 'Connect' in the system dialog to complete the connection.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-    }
 }

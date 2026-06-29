@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -114,11 +115,32 @@ fun SnmpScreen(
                         singleLine = true
                     )
 
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(listOf("public", "private", "cisco", "community")) { community ->
-                            AssistChip(
-                                onClick = { communityInput = community },
-                                label = { Text(community) }
+                    val communityOptions = listOf(
+                        "public", "private", "cisco", "community")
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        communityOptions.forEach { option ->
+                            FilterChip(
+                                selected = communityInput == option,
+                                onClick = { communityInput = option },
+                                label = { 
+                                    Text(
+                                        text = option,
+                                        fontFamily = MonoType
+                                    ) 
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = 
+                                        Color(0xFF00BFA5),
+                                    selectedLabelColor = Color(0xFF003D36),
+                                    containerColor = Color(0xFF161B22),
+                                    labelColor = Color(0xFF8B949E)
+                                )
                             )
                         }
                     }

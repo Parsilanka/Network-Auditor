@@ -1,5 +1,6 @@
 package com.securenet.auditor.ui.packet
 
+import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
@@ -37,13 +38,14 @@ class PacketAnalyzerViewModel(private val analyzer: PacketAnalyzer) : ViewModel(
         }
     }
 
-    fun startConnectionMonitoring() {
+    fun loadActiveConnections(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
-            while (isActive) {
-                _activeConnections.value = analyzer.getActiveConnections()
-                delay(3000)
-            }
+            _activeConnections.value = analyzer.getActiveConnectionInfo(context)
         }
+    }
+
+    fun startConnectionMonitoring() {
+        // Monitoring is handled by the UI or loadActiveConnections
     }
 
     companion object {

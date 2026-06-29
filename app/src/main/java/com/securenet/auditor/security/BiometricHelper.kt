@@ -41,8 +41,8 @@ class BiometricHelper(private val context: Context) {
             })
 
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Vault Access")
-            .setSubtitle("Authenticate to view encrypted scan history")
+            .setTitle("Network Auditor")
+            .setSubtitle("Authenticate to have access")
             .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
             .build()
 

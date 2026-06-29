@@ -81,9 +81,6 @@ fun HeaderGraderScreen(
                     val data = res.data
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         item { OverallGradeCard(data) }
-                        if (data.serverInfo != null) {
-                            item { ServerWarning(data.serverInfo) }
-                        }
                         items(data.headers) { header ->
                             HeaderGradeRow(header)
                         }
@@ -131,20 +128,6 @@ fun OverallGradeCard(data: HttpHeaderAnalyzer.HeaderAnalysisResult) {
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp
                 )
-            }
-        }
-    }
-}
-
-@Composable
-fun ServerWarning(server: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFC107).copy(alpha = 0.1f))) {
-        Row(modifier = Modifier.padding(16.dp)) {
-            Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFFFC107))
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text("Server header exposed: $server", fontWeight = FontWeight.Bold, color = Color(0xFFFFC107))
-                Text("Revealing server software version aids attackers. Recommendation: Remove or obscure the Server header.", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
