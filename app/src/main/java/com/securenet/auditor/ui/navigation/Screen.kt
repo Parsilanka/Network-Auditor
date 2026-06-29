@@ -25,4 +25,7 @@ sealed class Screen(val route: String) {
     object HeaderGrader : Screen("header_grader")
     object SubdomainEnum : Screen("subdomain_enum")
     object PacketAnalyzer : Screen("packet_analyzer")
+    object PortKnocker : Screen("port_knocking")
+    object DnsLeak : Screen("dns_leak")
+    object SshTerminal : Screen("ssh_terminal")
 }

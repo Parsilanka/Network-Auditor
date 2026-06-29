@@ -232,6 +232,13 @@ fun DashboardScreen(
             )
 
             DashboardFeatureCard(
+                icon = Icons.Outlined.Dns,
+                title = "DNS Leak Test",
+                subtitle = "Check if your VPN is leaking",
+                onClick = { navController.navigate(Screen.DnsLeak.route) }
+            )
+
+            DashboardFeatureCard(
                 icon = Icons.Outlined.Lock,
                 title = "Secure Vault",
                 subtitle = "Encrypted scan history",
@@ -289,6 +296,24 @@ fun DashboardScreen(
                 title = "Traffic Analyzer",
                 subtitle = "Per-app network usage stats",
                 onClick = { navController.navigate(Screen.PacketAnalyzer.route) }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Remote Management", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.DoorBack,
+                title = "Port Knocker",
+                subtitle = "Stealth firewall triggering",
+                onClick = { navController.navigate(Screen.PortKnocker.route) }
+            )
+
+            DashboardFeatureCard(
+                icon = Icons.Outlined.Terminal,
+                title = "SSH Terminal",
+                subtitle = "Secure remote command access",
+                onClick = { navController.navigate(Screen.SshTerminal.route) }
             )
 
             Spacer(modifier = Modifier.height(24.dp))

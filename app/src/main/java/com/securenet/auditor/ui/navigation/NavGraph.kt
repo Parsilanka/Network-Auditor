@@ -49,6 +49,12 @@ import com.securenet.auditor.ui.ssl.*
 import com.securenet.auditor.ui.headers.*
 import com.securenet.auditor.ui.subdomain.*
 import com.securenet.auditor.ui.packet.*
+import com.securenet.auditor.ui.portknocker.PortKnockerScreen
+import com.securenet.auditor.ui.portknocker.PortKnockerViewModel
+import com.securenet.auditor.ui.dnsleak.DnsLeakScreen
+import com.securenet.auditor.ui.dnsleak.DnsLeakViewModel
+import com.securenet.auditor.ui.ssh.SshTerminalScreen
+import com.securenet.auditor.ui.ssh.SshTerminalViewModel
 import com.securenet.auditor.ui.rogueap.*
 import kotlinx.coroutines.launch
 
@@ -216,6 +222,18 @@ fun NavGraph() {
                 composable(Screen.PacketAnalyzer.route) {
                     val packetViewModel: PacketAnalyzerViewModel = viewModel(factory = PacketAnalyzerViewModel.provideFactory(container.packetAnalyzer))
                     PacketAnalyzerScreen(navController, packetViewModel, onBack = { navController.popBackStack() })
+                }
+                composable(Screen.PortKnocker.route) {
+                    val portKnockerViewModel: PortKnockerViewModel = viewModel(factory = PortKnockerViewModel.provideFactory())
+                    PortKnockerScreen(portKnockerViewModel, onBack = { navController.popBackStack() })
+                }
+                composable(Screen.DnsLeak.route) {
+                    val dnsLeakViewModel: DnsLeakViewModel = viewModel(factory = DnsLeakViewModel.provideFactory())
+                    DnsLeakScreen(dnsLeakViewModel, onBack = { navController.popBackStack() })
+                }
+                composable(Screen.SshTerminal.route) {
+                    val sshViewModel: SshTerminalViewModel = viewModel(factory = SshTerminalViewModel.provideFactory(container))
+                    SshTerminalScreen(sshViewModel, onBack = { navController.popBackStack() })
                 }
                 composable(Screen.RogueAp.route) {
                     val rogueApViewModel: RogueApViewModel = viewModel(factory = RogueApViewModel.provideFactory(context))
@@ -462,6 +480,37 @@ fun DrawerContent(
             selected = currentRoute == Screen.PacketAnalyzer.route,
             onClick = {
                 navController.navigate(Screen.PacketAnalyzer.route)
+                onItemClick()
+            }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("ADVANCED", style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(start = 12.dp, bottom = 4.dp))
+
+        DrawerItem(
+            icon = Icons.Outlined.DoorBack,
+            label = "Port Knocker",
+            selected = currentRoute == Screen.PortKnocker.route,
+            onClick = {
+                navController.navigate(Screen.PortKnocker.route)
+                onItemClick()
+            }
+        )
+        DrawerItem(
+            icon = Icons.Outlined.Dns,
+            label = "DNS Leak Test",
+            selected = currentRoute == Screen.DnsLeak.route,
+            onClick = {
+                navController.navigate(Screen.DnsLeak.route)
+                onItemClick()
+            }
+        )
+        DrawerItem(
+            icon = Icons.Outlined.Terminal,
+            label = "SSH Terminal",
+            selected = currentRoute == Screen.SshTerminal.route,
+            onClick = {
+                navController.navigate(Screen.SshTerminal.route)
                 onItemClick()
             }
         )
