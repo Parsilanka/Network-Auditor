@@ -2,69 +2,86 @@ package com.securenet.auditor.network
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.Socket
-import java.net.SocketTimeoutException
 
 class PortKnocker {
 
-    enum class Protocol { TCP, UDP }
-
-    data class KnockStep(
-        val port: Int,
-        val protocol: Protocol,
-        val delayMs: Long = 100
+    data class UIKnockStep(
+        val port: String,
+        val protocol: String,
+        val delayMs: String = "200"
     )
 
     data class KnockResult(
+        val step: Int,
+        val port: Int,
+        val protocol: String,
         val success: Boolean,
-        val message: String
+        val timestamp: Long
     )
 
-    suspend fun executeSequence(
+    fun executeKnockSequence(
         host: String,
-        sequence: List<KnockStep>
-    ): KnockResult = withContext(Dispatchers.IO) {
-        try {
-            val address = InetAddress.getByName(host)
+        steps: List<UIKnockStep>
+    ): Flow<KnockResult> = flow {
+        steps.forEachIndexed { index, uiStep ->
+            val port = uiStep.port.toIntOrNull() ?: return@forEachIndexed
+            val delayValue = uiStep.delayMs.toLongOrNull() ?: 200L
             
-            sequence.forEachIndexed { index, step ->
-                try {
-                    when (step.protocol) {
-                        Protocol.TCP -> {
-                            // For TCP knocking, we just try to connect and immediately close
-                            // We don't care if it succeeds (usually it won't as the port is closed)
-                            try {
-                                val socket = Socket()
-                                socket.connect(java.net.InetSocketAddress(address, step.port), 200)
-                                socket.close()
-                            } catch (e: Exception) {
-                                // Expected timeout or connection refused
-                            }
-                        }
-                        Protocol.UDP -> {
-                            val socket = DatagramSocket()
-                            val data = "knock".toByteArray()
-                            val packet = DatagramPacket(data, data.size, address, step.port)
-                            socket.send(packet)
-                            socket.close()
-                        }
-                    }
-                    
-                    if (index < sequence.size - 1) {
-                        delay(step.delayMs)
-                    }
-                } catch (e: Exception) {
-                    return@withContext KnockResult(false, "Error at step ${index + 1} (Port ${step.port}): ${e.message}")
-                }
+            val success = when (uiStep.protocol) {
+                "TCP" -> knockTcp(host, port)
+                "UDP" -> knockUdp(host, port)
+                else -> false
             }
             
-            KnockResult(true, "Sequence sent successfully to $host")
+            emit(KnockResult(
+                step = index + 1,
+                port = port,
+                protocol = uiStep.protocol,
+                success = success,
+                timestamp = System.currentTimeMillis()
+            ))
+            
+            if (index < steps.size - 1) {
+                delay(delayValue)
+            }
+        }
+    }.flowOn(Dispatchers.IO)
+
+    private fun knockTcp(host: String, port: Int): Boolean {
+        return try {
+            Socket().use { socket ->
+                socket.connect(
+                    InetSocketAddress(host, port), 1000)
+            }
+            true
         } catch (e: Exception) {
-            KnockResult(false, "Host resolution failed: ${e.message}")
+            // Connection refused is actually expected
+            // for a knock - the port doesn't need to 
+            // accept, just receive the SYN packet
+            true
+        }
+    }
+
+    private fun knockUdp(host: String, port: Int): Boolean {
+        return try {
+            DatagramSocket().use { socket ->
+                val data = ByteArray(1)
+                val packet = DatagramPacket(
+                    data, data.size,
+                    InetAddress.getByName(host), port)
+                socket.send(packet)
+            }
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 }

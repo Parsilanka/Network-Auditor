@@ -228,7 +228,7 @@ fun NavGraph() {
                     PortKnockerScreen(portKnockerViewModel, onBack = { navController.popBackStack() })
                 }
                 composable(Screen.DnsLeak.route) {
-                    val dnsLeakViewModel: DnsLeakViewModel = viewModel(factory = DnsLeakViewModel.provideFactory())
+                    val dnsLeakViewModel: DnsLeakViewModel = viewModel(factory = DnsLeakViewModel.provideFactory(container))
                     DnsLeakScreen(dnsLeakViewModel, onBack = { navController.popBackStack() })
                 }
                 composable(Screen.SshTerminal.route) {

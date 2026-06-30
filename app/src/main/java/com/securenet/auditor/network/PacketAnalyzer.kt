@@ -29,6 +29,12 @@ class PacketAnalyzer(private val context: Context) {
         val protocol: String
     )
 
+    data class HourlyTraffic(
+        val hour: Int,
+        val downloadMb: Float,
+        val uploadMb: Float
+    )
+
     @RequiresApi(Build.VERSION_CODES.M)
     fun getNetworkStats(
         hours: Int = 24
@@ -165,8 +171,56 @@ class PacketAnalyzer(private val context: Context) {
         }
         
         return connections
+            .filter { conn ->
+                !conn.localAddress.startsWith("fe80:") &&
+                (conn.remoteAddress != "Active Interface" || conn.localAddress.contains("."))
+            }
             .distinctBy { "${it.localAddress}${it.remoteAddress}" }
             .sortedBy { it.state }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun getHourlyTraffic(context: Context): List<HourlyTraffic> {
+        val networkStatsManager = context
+            .getSystemService(Context.NETWORK_STATS_SERVICE) as NetworkStatsManager
+
+        val calendar = java.util.Calendar.getInstance()
+        val endTime = calendar.timeInMillis
+        calendar.add(java.util.Calendar.HOUR_OF_DAY, -24)
+        val startTime = calendar.timeInMillis
+
+        val hourlyMap = mutableMapOf<Int, Pair<Long, Long>>()
+        for (h in 0..23) hourlyMap[h] = Pair(0L, 0L)
+
+        try {
+            val stats = networkStatsManager.querySummary(
+                ConnectivityManager.TYPE_WIFI,
+                null, startTime, endTime)
+            
+            val bucket = NetworkStats.Bucket()
+            while (stats.hasNextBucket()) {
+                stats.getNextBucket(bucket)
+                val bucketCalendar = java.util.Calendar.getInstance()
+                bucketCalendar.timeInMillis = bucket.startTimeStamp
+                val hour = bucketCalendar.get(java.util.Calendar.HOUR_OF_DAY)
+                
+                val current = hourlyMap[hour] ?: Pair(0L, 0L)
+                hourlyMap[hour] = Pair(
+                    current.first + bucket.rxBytes,
+                    current.second + bucket.txBytes
+                )
+            }
+            stats.close()
+        } catch (e: Exception) {}
+
+        return (0..23).map { hour ->
+            val (rx, tx) = hourlyMap[hour] ?: Pair(0L, 0L)
+            HourlyTraffic(
+                hour = hour,
+                downloadMb = rx / 1048576f,
+                uploadMb = tx / 1048576f
+            )
+        }
     }
 
     private fun hexToAddress(hex: String): String? {

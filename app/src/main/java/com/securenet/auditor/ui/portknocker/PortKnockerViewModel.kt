@@ -14,22 +14,22 @@ class PortKnockerViewModel(private val knocker: PortKnocker) : ViewModel() {
     private val _isExecuting = MutableStateFlow(false)
     val isExecuting: StateFlow<Boolean> = _isExecuting.asStateFlow()
 
-    private val _lastResult = MutableStateFlow<PortKnocker.KnockResult?>(null)
-    val lastResult: StateFlow<PortKnocker.KnockResult?> = _lastResult.asStateFlow()
+    private val _knockResults = MutableStateFlow<List<PortKnocker.KnockResult>>(emptyList())
+    val knockResults: StateFlow<List<PortKnocker.KnockResult>> = _knockResults.asStateFlow()
 
-    private val _sequence = MutableStateFlow<List<PortKnocker.KnockStep>>(
+    private val _sequence = MutableStateFlow<List<PortKnocker.UIKnockStep>>(
         listOf(
-            PortKnocker.KnockStep(7000, PortKnocker.Protocol.TCP),
-            PortKnocker.KnockStep(8000, PortKnocker.Protocol.TCP),
-            PortKnocker.KnockStep(9000, PortKnocker.Protocol.TCP)
+            PortKnocker.UIKnockStep("7000", "TCP"),
+            PortKnocker.UIKnockStep("8000", "TCP"),
+            PortKnocker.UIKnockStep("9000", "TCP")
         )
     )
-    val sequence: StateFlow<List<PortKnocker.KnockStep>> = _sequence.asStateFlow()
+    val sequence: StateFlow<List<PortKnocker.UIKnockStep>> = _sequence.asStateFlow()
 
     fun addStep() {
         val current = _sequence.value.toMutableList()
-        val lastPort = current.lastOrNull()?.port ?: 1000
-        current.add(PortKnocker.KnockStep(lastPort + 1000, PortKnocker.Protocol.TCP))
+        val lastPort = current.lastOrNull()?.port?.toIntOrNull() ?: 1000
+        current.add(PortKnocker.UIKnockStep((lastPort + 1000).toString(), "TCP"))
         _sequence.value = current
     }
 
@@ -41,20 +41,25 @@ class PortKnockerViewModel(private val knocker: PortKnocker) : ViewModel() {
         }
     }
 
-    fun updateStep(index: Int, step: PortKnocker.KnockStep) {
+    fun updateStep(index: Int, step: PortKnocker.UIKnockStep) {
         val current = _sequence.value.toMutableList()
         current[index] = step
         _sequence.value = current
     }
 
-    fun executeKnock(host: String) {
+    fun executeKnockSequence(host: String) {
         if (host.isBlank()) return
         
         viewModelScope.launch {
             _isExecuting.value = true
-            _lastResult.value = null
-            val result = knocker.executeSequence(host, _sequence.value)
-            _lastResult.value = result
+            _knockResults.value = emptyList()
+            
+            knocker.executeKnockSequence(host, _sequence.value).collect { result ->
+                val currentResults = _knockResults.value.toMutableList()
+                currentResults.add(result)
+                _knockResults.value = currentResults
+            }
+
             _isExecuting.value = false
         }
     }

@@ -3,6 +3,7 @@ package com.securenet.auditor.ui.dnsleak
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.securenet.auditor.AppContainer
 import com.securenet.auditor.network.DnsLeakTester
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,10 +38,10 @@ class DnsLeakViewModel(private val tester: DnsLeakTester) : ViewModel() {
     }
 
     companion object {
-        fun provideFactory(): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun provideFactory(container: AppContainer): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return DnsLeakViewModel(DnsLeakTester()) as T
+                return DnsLeakViewModel(container.dnsLeakTester) as T
             }
         }
     }

@@ -23,6 +23,9 @@ class PacketAnalyzerViewModel(private val analyzer: PacketAnalyzer) : ViewModel(
     private val _activeConnections = MutableStateFlow<List<PacketAnalyzer.ConnectionInfo>>(emptyList())
     val activeConnections: StateFlow<List<PacketAnalyzer.ConnectionInfo>> = _activeConnections.asStateFlow()
 
+    private val _hourlyTraffic = MutableStateFlow<List<PacketAnalyzer.HourlyTraffic>>(emptyList())
+    val hourlyTraffic: StateFlow<List<PacketAnalyzer.HourlyTraffic>> = _hourlyTraffic.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -41,6 +44,13 @@ class PacketAnalyzerViewModel(private val analyzer: PacketAnalyzer) : ViewModel(
     fun loadActiveConnections(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _activeConnections.value = analyzer.getActiveConnectionInfo(context)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun loadHourlyTraffic(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _hourlyTraffic.value = analyzer.getHourlyTraffic(context)
         }
     }
 

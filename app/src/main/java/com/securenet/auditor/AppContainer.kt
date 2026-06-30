@@ -38,6 +38,10 @@ class AppContainer(context: Context) {
     val snmpClient = SnmpClient()
     val wifiConnectionManager = WifiConnectionManager(context)
     val pdfReportGenerator = PdfReportGenerator(context)
+    
+    val geoLocationService = GeoLocationService.create()
+    val geoLocationRepository = GeoLocationRepository(geoLocationService)
+    val dnsLeakTester = DnsLeakTester(geoLocationRepository)
 
     val bandwidthMonitor = BandwidthMonitor()
     val sslTlsScanner = SslTlsScanner()
@@ -55,9 +59,6 @@ class AppContainer(context: Context) {
     private val ipApiService = OsintApiService.createIpApiService()
     private val urlHausService = OsintApiService.createUrlHausService()
     private val whoisClient = WhoisClient()
-    
-    val geoLocationService = GeoLocationService.create()
-    val geoLocationRepository = GeoLocationRepository(geoLocationService)
 
     val osintRepository = OsintRepository(
         hibpService,

@@ -2,10 +2,12 @@ package com.securenet.auditor.network
 
 import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.JSch
+import com.jcraft.jsch.JSchException
 import com.jcraft.jsch.Session
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.net.UnknownHostException
 import java.util.Properties
 
 class SshClient {
@@ -25,7 +27,7 @@ class SshClient {
         password: String? = null,
         privateKey: String? = null,
         port: Int = 22
-    ): Boolean = withContext(Dispatchers.IO) {
+    ): ConnectionResult = withContext(Dispatchers.IO) {
         try {
             disconnect()
             
@@ -44,11 +46,28 @@ class SshClient {
             session?.setConfig(config)
             session?.timeout = 10000
             
-            session?.connect()
-            session?.isConnected == true
+            session?.connect(10000)
+            
+            if (session?.isConnected == true) {
+                ConnectionResult.Success
+            } else {
+                ConnectionResult.Failure("Connection failed without error message")
+            }
+        } catch (e: JSchException) {
+            val msg = e.message ?: ""
+            when {
+                msg.contains("Auth fail", ignoreCase = true) -> 
+                    ConnectionResult.Failure("Authentication failed: Invalid username, password, or key")
+                msg.contains("timeout", ignoreCase = true) -> 
+                    ConnectionResult.Failure("Connection timed out: Server unreachable or firewall blocking port $port")
+                msg.contains("Connection refused", ignoreCase = true) ->
+                    ConnectionResult.Failure("Connection refused: SSH service not running on port $port")
+                else -> ConnectionResult.Failure("SSH Error: ${e.message}")
+            }
+        } catch (e: UnknownHostException) {
+            ConnectionResult.Failure("Network error: Unknown host '$host'")
         } catch (e: Exception) {
-            e.printStackTrace()
-            false
+            ConnectionResult.Failure("Error: ${e.message ?: "Unknown connection error"}")
         }
     }
 
@@ -67,7 +86,7 @@ class SshClient {
             channel.setOutputStream(outputStream)
             channel.setErrStream(errorStream)
             
-            channel.connect()
+            channel.connect(5000)
             
             while (!channel.isClosed) {
                 kotlinx.coroutines.delay(100)
@@ -97,5 +116,10 @@ class SshClient {
 
     fun isConnected(): Boolean {
         return session?.isConnected == true
+    }
+
+    sealed class ConnectionResult {
+        object Success : ConnectionResult()
+        data class Failure(val message: String) : ConnectionResult()
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
@@ -334,8 +335,8 @@ fun GradeCard(grade: SslTlsScanner.SslGrade) {
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text("Overall Rating", fontWeight = FontWeight.Bold)
-                Text(getGradeExplanation(grade), style = MaterialTheme.typography.bodySmall)
+                Text("Overall Rating", fontWeight = FontWeight.Bold, color = Color(0xFFE6EDF3))
+                Text(getGradeExplanation(grade), style = MaterialTheme.typography.bodySmall, color = Color(0xFF8B949E))
             }
         }
     }
@@ -358,36 +359,60 @@ fun CertificateCard(cert: SslTlsScanner.CertificateInfo) {
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22))) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Certificate Details", fontWeight = FontWeight.Bold, color = TealPrimary)
-            Divider(color = Color.Gray.copy(alpha = 0.2f))
+            HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
             
-            // Timeline
-            val total = cert.validUntil.time - cert.validFrom.time
-            val elapsed = Date().time - cert.validFrom.time
-            val progress = (elapsed.toFloat() / total).coerceIn(0f, 1f)
-            
-            Column {
-                LinearProgressIndicator(
-                    progress = progress,
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
-                    color = if (cert.isExpired) Color.Red else TealPrimary,
-                    trackColor = Color.Gray.copy(alpha = 0.2f)
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(df.format(cert.validFrom), fontSize = 10.sp, color = Color.Gray)
-                    Text(if (cert.isExpired) "EXPIRED" else "${cert.daysUntilExpiry} days left", fontSize = 10.sp, color = if (cert.isExpired) Color.Red else TealPrimary)
-                    Text(df.format(cert.validUntil), fontSize = 10.sp, color = Color.Gray)
+            if (cert.subject.startsWith("Error:")) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF3D0C0C))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Outlined.ErrorOutline,
+                            contentDescription = null,
+                            tint = Color(0xFFF44336)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            cert.subject,
+                            color = Color(0xFFFF7B72),
+                            fontSize = 12.sp
+                        )
+                    }
                 }
-            }
+            } else {
+                // Timeline
+                val total = cert.validUntil.time - cert.validFrom.time
+                val elapsed = Date().time - cert.validFrom.time
+                val progress = (elapsed.toFloat() / total).coerceIn(0f, 1f)
+                
+                Column {
+                    LinearProgressIndicator(
+                        progress = progress,
+                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                        color = if (cert.isExpired) Color.Red else TealPrimary,
+                        trackColor = Color.Gray.copy(alpha = 0.2f)
+                    )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(df.format(cert.validFrom), fontSize = 10.sp, color = Color(0xFF8B949E))
+                        Text(if (cert.isExpired) "EXPIRED" else "${cert.daysUntilExpiry} days left", fontSize = 10.sp, color = if (cert.isExpired) Color.Red else TealPrimary)
+                        Text(df.format(cert.validUntil), fontSize = 10.sp, color = Color(0xFF8B949E))
+                    }
+                }
 
-            CertRow("Subject", cert.subject)
-            CertRow("Issuer", cert.issuer)
-            CertRow("Key Size", "${cert.keySize} bits")
-            CertRow("Algorithm", cert.signatureAlgorithm)
-            CertRow("Serial", cert.serialNumber, isMono = true)
-            
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (cert.isWildcard) SuggestionChip(onClick = {}, label = { Text("Wildcard", fontSize = 10.sp) })
-                if (cert.isSelfSigned) SuggestionChip(onClick = {}, label = { Text("Self-Signed", fontSize = 10.sp) }, colors = SuggestionChipDefaults.suggestionChipColors(labelColor = Color.Red))
+                CertRow("Subject", cert.subject)
+                CertRow("Issuer", cert.issuer)
+                CertRow("Key Size", "${cert.keySize} bits")
+                CertRow("Algorithm", cert.signatureAlgorithm)
+                CertRow("Serial", cert.serialNumber, isMono = true)
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (cert.isWildcard) SuggestionChip(onClick = {}, label = { Text("Wildcard", fontSize = 10.sp, color = Color(0xFFE6EDF3)) })
+                    if (cert.isSelfSigned) SuggestionChip(onClick = {}, label = { Text("Self-Signed", fontSize = 10.sp, color = Color.Red) }, colors = SuggestionChipDefaults.suggestionChipColors(containerColor = Color.Red.copy(alpha = 0.1f)))
+                }
             }
         }
     }
@@ -395,9 +420,14 @@ fun CertificateCard(cert: SslTlsScanner.CertificateInfo) {
 
 @Composable
 fun CertRow(label: String, value: String, isMono: Boolean = false) {
-    Column(modifier = Modifier.padding(vertical = 2.dp)) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-        Text(value, fontSize = 12.sp, fontFamily = if (isMono) MonoType else null)
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Color(0xFF8B949E))
+        Text(
+            value.ifBlank { "Unable to retrieve" },
+            fontSize = 14.sp,
+            color = Color(0xFFE6EDF3),
+            fontFamily = if (isMono) MonoType else null
+        )
     }
 }
 
@@ -410,20 +440,36 @@ fun ProtocolTable(protocols: List<SslTlsScanner.ProtocolResult>) {
             protocols.forEach { p ->
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(p.version, fontSize = 12.sp, modifier = Modifier.weight(1f))
                     Text(
-                        if (p.isSupported) "✓ Supported" else "✗ Disabled",
-                        fontSize = 12.sp,
-                        color = if (p.isSupported) TealPrimary else Color.Gray,
+                        p.version,
+                        color = Color(0xFFE6EDF3),
+                        fontFamily = MonoType,
+                        fontSize = 13.sp,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        if (p.riskLevel == SslTlsScanner.RiskLevel.CRITICAL) "⚠ Risky" else "✅ Secure",
+                        if (p.isSupported) "✓ Enabled" else "✗ Disabled",
+                        color = if (p.isSupported) {
+                            if (p.riskLevel == SslTlsScanner.RiskLevel.CRITICAL) Color(0xFFF44336) else Color(0xFF4CAF50)
+                        } else Color(0xFF8B949E),
                         fontSize = 12.sp,
-                        color = if (p.riskLevel == SslTlsScanner.RiskLevel.CRITICAL) Color.Red else Color(0xFF4CAF50)
+                        modifier = Modifier.weight(1f)
                     )
+                    Surface(
+                        color = (if (p.riskLevel == SslTlsScanner.RiskLevel.CRITICAL) Color.Red else Color(0xFF4CAF50)).copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            if (p.riskLevel == SslTlsScanner.RiskLevel.CRITICAL) "RISKY" else "SECURE",
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (p.riskLevel == SslTlsScanner.RiskLevel.CRITICAL) Color.Red else Color(0xFF4CAF50)
+                        )
+                    }
                 }
             }
         }
@@ -434,8 +480,11 @@ fun ProtocolTable(protocols: List<SslTlsScanner.ProtocolResult>) {
 fun VulnerabilitiesList(vulns: List<SslTlsScanner.SslVulnerability>) {
     Text("Vulnerabilities", fontWeight = FontWeight.Bold, color = TealPrimary)
     vulns.filter { it.isVulnerable }.forEach { v ->
-        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22))) {
-            Column(modifier = Modifier.padding(12.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22))
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val color = when (v.severity) {
                         SslTlsScanner.RiskLevel.CRITICAL -> Color.Red
@@ -447,13 +496,30 @@ fun VulnerabilitiesList(vulns: List<SslTlsScanner.SslVulnerability>) {
                         Text(v.severity.name, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(v.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(
+                        v.name,
+                        color = Color(0xFFE6EDF3),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
                 if (v.cveId != null) {
-                    Text(v.cveId, fontFamily = MonoType, fontSize = 10.sp, color = Color.Gray, modifier = Modifier.padding(top = 4.dp))
+                    Text(v.cveId, fontFamily = MonoType, fontSize = 10.sp, color = Color(0xFF8B949E), modifier = Modifier.padding(top = 4.dp))
                 }
-                Text(v.description, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
-                Text("Recommendation: ${v.recommendation}", style = MaterialTheme.typography.bodySmall, color = Color(0xFF4CAF50), fontStyle = FontStyle.Italic, modifier = Modifier.padding(top = 4.dp))
+                Text(
+                    v.description,
+                    color = Color(0xFFE6EDF3),
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                Text(
+                    "Recommendation: ${v.recommendation}",
+                    color = Color(0xFF56D364),
+                    fontSize = 12.sp,
+                    fontStyle = FontStyle.Italic,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
         }
     }
@@ -467,7 +533,7 @@ fun SecurityHeadersTable(headers: Map<String, String?>) {
             Spacer(modifier = Modifier.height(8.dp))
             headers.forEach { (name, value) ->
                 Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(name, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                    Text(name, color = Color(0xFFE6EDF3), fontSize = 12.sp, modifier = Modifier.weight(1f))
                     Text(if (value != null) "✅ Yes" else "❌ No", fontSize = 12.sp, color = if (value != null) Color(0xFF4CAF50) else Color.Red)
                 }
             }

@@ -1,11 +1,15 @@
 package com.securenet.auditor.ui.bandwidth
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.FiberManualRecord
@@ -19,7 +23,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -444,14 +450,16 @@ fun RealTimeTab(
         // Speed Cards
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SpeedCard(
-                label = "↓ Download",
+                label = "Download",
+                icon = Icons.Outlined.ArrowDownward,
                 speed = currentSpeed?.downloadFormatted ?: "0 B/s",
                 peak = "Peak: ${BandwidthMonitor().formatSpeed(peakDownload)}",
                 color = TealPrimary,
                 modifier = Modifier.weight(1f)
             )
             SpeedCard(
-                label = "↑ Upload",
+                label = "Upload",
+                icon = Icons.Outlined.ArrowUpward,
                 speed = currentSpeed?.uploadFormatted ?: "0 B/s",
                 peak = "Peak: ${BandwidthMonitor().formatSpeed(peakUpload)}",
                 color = Color(0xFF0288D1),
@@ -486,15 +494,38 @@ fun RealTimeTab(
 }
 
 @Composable
-fun SpeedCard(label: String, speed: String, peak: String, color: Color, modifier: Modifier) {
+fun SpeedCard(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, speed: String, peak: String, color: Color, modifier: Modifier) {
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = color)
-            Text(speed, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, fontFamily = MonoType)
-            Divider(modifier = Modifier.padding(vertical = 4.dp), color = color.copy(alpha = 0.3f))
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    label,
+                    color = color,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                speed,
+                color = Color(0xFFE6EDF3), // Fix 1: explicit bright color
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = MonoType
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            HorizontalDivider(color = Color(0xFF30363D))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(peak, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
         }
     }
@@ -559,8 +590,8 @@ fun SpeedMeter(speedBytes: Long, speedFormatted: String) {
         animatedPercentage.animateTo(percentage)
     }
 
-    Box(contentAlignment = Alignment.Center) {
-        Canvas(modifier = Modifier.size(180.dp)) {
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(220.dp).padding(16.dp)) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width / 2, size.height / 2)
             val radius = size.width / 2
 
@@ -610,21 +641,24 @@ fun SpeedMeter(speedBytes: Long, speedFormatted: String) {
             )
         }
 
+        // Fix 2: Proper Column separation for speedometer text
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(top = 40.dp)
         ) {
             Text(
                 text = speedFormatted,
-                style = MaterialTheme.typography.titleLarge,
+                color = Color(0xFFE6EDF3),
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = MonoType,
-                color = Color.White
+                fontFamily = MonoType
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Download Speed",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray
+                color = Color(0xFF8B949E),
+                fontSize = 11.sp
             )
         }
     }
@@ -649,15 +683,72 @@ fun StatChip(label: String) {
 
 @Composable
 fun AppUsageTab(viewModel: BandwidthViewModel, appUsage: List<BandwidthViewModel.AppNetworkUsage>) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    LaunchedEffect(Unit) {
-        viewModel.loadAppUsageStats(context)
+    val context = LocalContext.current
+    // Fix 3: Check usage stats permission
+    val hasPermission = remember { viewModel.hasUsageStatsPermission(context) }
+
+    LaunchedEffect(hasPermission) {
+        if (hasPermission) {
+            viewModel.loadAppUsageStats(context)
+        }
     }
 
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        items(appUsage) { app ->
-            AppUsageRow(app)
-            Divider(color = Color.Gray.copy(alpha = 0.1f))
+    if (!hasPermission) {
+        // Show permission request card
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                Icons.Outlined.Lock,
+                contentDescription = null,
+                tint = Color(0xFF00BFA5),
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "Usage Access Required",
+                color = Color(0xFFE6EDF3),
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "To see network usage for ALL apps (not just Network Auditor), grant Usage Access permission in system settings.",
+                color = Color(0xFF8B949E),
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            Button(
+                onClick = {
+                    val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                    context.startActivity(intent)
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF00BFA5),
+                    contentColor = Color(0xFF003D36)
+                )
+            ) {
+                Text("Open Settings", fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Find 'Network Auditor' in the list and toggle it ON",
+                color = Color(0xFF8B949E),
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+    } else {
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            items(appUsage) { app ->
+                AppUsageRow(app)
+                HorizontalDivider(color = Color.Gray.copy(alpha = 0.1f))
+            }
         }
     }
 }

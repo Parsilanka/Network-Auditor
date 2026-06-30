@@ -3,15 +3,14 @@ package com.securenet.auditor.ui.tools
 import android.content.Intent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -113,7 +112,7 @@ fun SpeedTestScreen(
 
             if (history.isNotEmpty()) {
                 item {
-                    HistorySection(history)
+                    HistorySection(history, viewModel)
                 }
             }
         }
@@ -252,7 +251,7 @@ fun ResultsSummaryCard(result: SpeedTestResult) {
             
             Text(rating, style = MaterialTheme.typography.bodyLarge, color = TealPrimary, fontWeight = FontWeight.Medium)
             
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 ResultSmallItem("Jitter", "${result.jitterMs.toInt()}ms")
@@ -272,13 +271,57 @@ fun ResultSmallItem(label: String, value: String) {
 }
 
 @Composable
-fun HistorySection(history: List<SpeedTestEntity>) {
+fun HistorySection(history: List<SpeedTestEntity>, viewModel: SpeedTestViewModel) {
+    var showClearDialog by remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("History", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.History, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color(0xFF8B949E))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("History", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            
+            Row {
+                TextButton(onClick = { viewModel.exportHistoryToCsv() }) {
+                    Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Export")
+                }
+                
+                TextButton(onClick = { showClearDialog = true }) {
+                    Icon(Icons.Outlined.DeleteOutline, contentDescription = null, tint = Color(0xFFF44336), modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Clear", color = Color(0xFFF44336))
+                }
+            }
         }
+        
+        if (showClearDialog) {
+            AlertDialog(
+                onDismissRequest = { showClearDialog = false },
+                title = { Text("Clear History?") },
+                text = { Text("This will permanently delete all saved speed test results. This cannot be undone.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.clearHistory()
+                        showClearDialog = false
+                    }) {
+                        Text("Clear All", color = Color(0xFFF44336))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
         
         // Mini Line Chart
@@ -291,8 +334,46 @@ fun HistorySection(history: List<SpeedTestEntity>) {
         Spacer(modifier = Modifier.height(16.dp))
         
         history.forEach { item ->
-            HistoryRow(item)
-            Divider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
+            val dismissState = rememberSwipeToDismissBoxState(
+                confirmValueChange = {
+                    if (it == SwipeToDismissBoxValue.EndToStart) {
+                        viewModel.deleteHistoryEntry(item.id)
+                        true
+                    } else false
+                }
+            )
+
+            SwipeToDismissBox(
+                state = dismissState,
+                enableDismissFromStartToEnd = false,
+                backgroundContent = {
+                    val color = if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+                        Color(0xFFF44336)
+                    } else Color.Transparent
+                    
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(color)
+                            .padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = "Delete",
+                            tint = Color.White
+                        )
+                    }
+                }
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    HistoryRow(item)
+                }
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
         }
     }
 }

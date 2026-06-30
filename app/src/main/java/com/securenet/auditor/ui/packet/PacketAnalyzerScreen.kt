@@ -26,6 +26,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.securenet.auditor.network.PacketAnalyzer
@@ -44,14 +46,22 @@ fun PacketAnalyzerScreen(
 ) {
     val appUsage by viewModel.appUsage.collectAsStateWithLifecycle()
     val activeConnections by viewModel.activeConnections.collectAsStateWithLifecycle()
+    val hourlyTraffic by viewModel.hourlyTraffic.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     
+    val context = LocalContext.current
     var selectedTab by remember { mutableStateOf(0) }
     var timeRange by remember { mutableStateOf(24) }
 
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             viewModel.loadStats(timeRange)
+        }
+    }
+
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 2 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            viewModel.loadHourlyTraffic(context)
         }
     }
 
@@ -87,7 +97,7 @@ fun PacketAnalyzerScreen(
             when (selectedTab) {
                 0 -> AppUsageTab(appUsage, isLoading)
                 1 -> ActiveConnectionsTab(activeConnections, navController, viewModel)
-                2 -> TimelineTab()
+                2 -> TimelineTab(hourlyTraffic)
             }
         }
     }
@@ -177,7 +187,7 @@ fun UsageBarRow(session: PacketAnalyzer.NetworkSession, maxBytes: Long) {
                 Text(
                     displayName,
                     color = Color(0xFFE6EDF3),
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
                 if (isSystem) {
@@ -287,8 +297,8 @@ fun ActiveConnectionsTab(connections: List<PacketAnalyzer.ConnectionInfo>, navCo
         Text(
             "Last updated: $secondsAgo seconds ago",
             style = MaterialTheme.typography.labelSmall,
-            color = Color.Gray,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            color = Color(0xFF8B949E),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -513,34 +523,203 @@ fun ActiveConnectionsTab(connections: List<PacketAnalyzer.ConnectionInfo>, navCo
 
 @Composable
 fun ConnectionRow(conn: PacketAnalyzer.ConnectionInfo, navController: NavController) {
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22))) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22)),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("${conn.localAddress} → ${conn.remoteAddress}", fontFamily = MonoType, fontSize = 12.sp)
-                val color = when(conn.state) {
-                    "ESTABLISHED" -> Color(0xFF4CAF50)
-                    "LISTEN" -> TealPrimary
-                    "TIME_WAIT" -> Color(0xFFFFC107)
-                    "CLOSE_WAIT" -> Color.Red
-                    else -> Color.Gray
+                Text(
+                    "${conn.localAddress} → ${conn.remoteAddress}",
+                    color = Color(0xFFE6EDF3),
+                    fontFamily = MonoType,
+                    fontSize = 12.sp,
+                    maxLines = 2
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Surface(
+                    color = when (conn.state) {
+                        "ESTABLISHED" -> Color(0xFF0D2D1A)
+                        "LISTEN" -> Color(0xFF0C2D4A)
+                        "ACTIVE" -> Color(0xFF1C3A2E)
+                        "TIME_WAIT" -> Color(0xFF3D2A00)
+                        else -> Color(0xFF21262D)
+                    },
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        conn.state,
+                        color = when (conn.state) {
+                            "ESTABLISHED" -> Color(0xFF56D364)
+                            "LISTEN" -> Color(0xFF79C0FF)
+                            "ACTIVE" -> Color(0xFF00BFA5)
+                            "TIME_WAIT" -> Color(0xFFF0B429)
+                            else -> Color(0xFF8B949E)
+                        },
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
                 }
-                Text(conn.state, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
-            IconButton(onClick = { 
-                val remoteIp = conn.remoteAddress.substringBefore(":")
-                navController.navigate(Screen.GeoLocation.route + "?ip=$remoteIp")
-            }) {
-                Icon(Icons.Default.LocationOn, contentDescription = "Geolocate", tint = TealPrimary)
+            IconButton(
+                onClick = { 
+                    val remoteIp = conn.remoteAddress.substringBefore(":")
+                    navController.navigate(Screen.GeoLocation.route + "?ip=$remoteIp")
+                },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    Icons.Outlined.LocationOn,
+                    contentDescription = "Geolocate",
+                    tint = Color(0xFF00BFA5),
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     }
 }
 
 @Composable
-fun TimelineTab() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Network Usage Timeline (Last 24h)", color = Color.Gray)
-        // Placeholder for stacked bar chart
+fun TimelineTab(
+    hourlyData: List<PacketAnalyzer.HourlyTraffic>,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            "Network Usage Timeline (Last 24h)",
+            color = Color(0xFFE6EDF3),
+            fontWeight = FontWeight.Bold,
+            fontSize = 15.sp,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (hourlyData.isEmpty() || 
+            hourlyData.all { it.downloadMb == 0f && it.uploadMb == 0f }) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Outlined.BarChart,
+                        contentDescription = null,
+                        tint = Color(0xFF8B949E),
+                        modifier = Modifier.size(40.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "No timeline data available yet",
+                        color = Color(0xFF8B949E)
+                    )
+                }
+            }
+            return
+        }
+
+        val maxValue = hourlyData.maxOf { it.downloadMb + it.uploadMb }.coerceAtLeast(1f)
+
+        // Stacked bar chart using Canvas
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+                .background(Color(0xFF161B22), RoundedCornerShape(12.dp))
+                .padding(12.dp)
+        ) {
+            val barWidth = size.width / 24f * 0.7f
+            val spacing = size.width / 24f * 0.3f
+            
+            hourlyData.forEachIndexed { hour, data ->
+                val x = hour * (barWidth + spacing) + spacing / 2
+                
+                val downloadHeight = (data.downloadMb / maxValue) * size.height
+                val uploadHeight = (data.uploadMb / maxValue) * size.height
+                
+                // Download bar (teal, bottom)
+                drawRect(
+                    color = Color(0xFF00BFA5),
+                    topLeft = Offset(x, size.height - downloadHeight),
+                    size = Size(barWidth, downloadHeight)
+                )
+                
+                // Upload bar (blue, stacked on top)
+                drawRect(
+                    color = Color(0xFF0288D1),
+                    topLeft = Offset(x, size.height - downloadHeight - uploadHeight),
+                    size = Size(barWidth, uploadHeight)
+                )
+            }
+            
+            // Horizontal grid lines
+            for (i in 0..3) {
+                val y = size.height * (i / 3f)
+                drawLine(
+                    color = Color(0xFF30363D),
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1f
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // X axis hour labels
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            listOf("00:00", "06:00", "12:00", "18:00", "23:00").forEach { label ->
+                Text(
+                    label,
+                    color = Color(0xFF8B949E),
+                    fontSize = 10.sp,
+                    fontFamily = MonoType
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Legend
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(Color(0xFF00BFA5), RoundedCornerShape(2.dp))
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                "Download", 
+                color = Color(0xFF8B949E),
+                fontSize = 12.sp
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(Color(0xFF0288D1), RoundedCornerShape(2.dp))
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                "Upload", 
+                color = Color(0xFF8B949E),
+                fontSize = 12.sp
+            )
+        }
     }
 }
 

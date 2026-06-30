@@ -15,4 +15,10 @@ interface SpeedTestDao {
 
     @Query("DELETE FROM speed_test_results WHERE id NOT IN (SELECT id FROM speed_test_results ORDER BY timestamp DESC LIMIT 20)")
     suspend fun trimHistory()
+
+    @Query("DELETE FROM speed_test_results")
+    suspend fun deleteAll()
+
+    @Query("DELETE FROM speed_test_results WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }

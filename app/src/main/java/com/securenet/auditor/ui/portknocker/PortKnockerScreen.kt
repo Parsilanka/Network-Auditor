@@ -1,11 +1,16 @@
 package com.securenet.auditor.ui.portknocker
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -26,6 +31,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.securenet.auditor.network.PortKnocker
 import com.securenet.auditor.ui.theme.MonoType
 import com.securenet.auditor.ui.theme.TealPrimary
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,10 +41,16 @@ fun PortKnockerScreen(
     viewModel: PortKnockerViewModel,
     onBack: () -> Unit
 ) {
-    var host by remember { mutableStateOf("") }
-    val sequence by viewModel.sequence.collectAsStateWithLifecycle()
+    var targetHost by remember { mutableStateOf("") }
+    val knockSteps by viewModel.sequence.collectAsStateWithLifecycle()
     val isExecuting by viewModel.isExecuting.collectAsStateWithLifecycle()
-    val lastResult by viewModel.lastResult.collectAsStateWithLifecycle()
+    val knockResults by viewModel.knockResults.collectAsStateWithLifecycle()
+
+    val canExecute = targetHost.isNotBlank() &&
+            knockSteps.isNotEmpty() &&
+            knockSteps.all { it.port.isNotBlank() && 
+                    it.port.toIntOrNull() != null &&
+                    it.port.toIntOrNull() in 1..65535 }
 
     Scaffold(
         topBar = {
@@ -59,83 +73,112 @@ fun PortKnockerScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .padding(16.dp)
         ) {
-            // Target Host
-            OutlinedTextField(
-                value = host,
-                onValueChange = { host = it },
-                label = { Text("Target Host / IP") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = TealPrimary,
-                    focusedLabelColor = TealPrimary
-                )
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Knock Sequence", fontWeight = FontWeight.Bold, color = TealPrimary)
-                TextButton(onClick = { viewModel.addStep() }) {
-                    Icon(Icons.Outlined.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Add Step")
-                }
-            }
-
             LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
             ) {
-                itemsIndexed(sequence) { index, step ->
-                    KnockStepRow(
+                item {
+                    OutlinedTextField(
+                        value = targetHost,
+                        onValueChange = { targetHost = it },
+                        label = { Text("Target Host / IP") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = TealPrimary,
+                            focusedLabelColor = TealPrimary,
+                            focusedTextColor = Color(0xFFE6EDF3),
+                            unfocusedTextColor = Color(0xFFE6EDF3)
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Knock Sequence", fontWeight = FontWeight.Bold, color = TealPrimary)
+                        TextButton(onClick = { viewModel.addStep() }) {
+                            Icon(Icons.Outlined.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add Step")
+                        }
+                    }
+                }
+
+                itemsIndexed(knockSteps) { index, step ->
+                    KnockStepCard(
                         step = step,
-                        onUpdate = { viewModel.updateStep(index, it) },
-                        onRemove = { viewModel.removeStep(index) },
-                        isLast = index == sequence.size - 1
+                        stepNumber = index + 1,
+                        onPortChange = { viewModel.updateStep(index, step.copy(port = it)) },
+                        onProtocolChange = { viewModel.updateStep(index, step.copy(protocol = it)) },
+                        onDelayChange = { viewModel.updateStep(index, step.copy(delayMs = it)) },
+                        onDelete = { viewModel.removeStep(index) }
                     )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                if (knockResults.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text("Execution Results", fontWeight = FontWeight.Bold, color = TealPrimary)
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
+                    items(knockResults) { result ->
+                        ExecutionResultRow(result)
+                    }
 
-            if (lastResult != null) {
-                Surface(
-                    color = if (lastResult!!.success) Color(0xFF1B3921) else Color(0xFF3D0C0C),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-                ) {
-                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            if (lastResult!!.success) Icons.Default.CheckCircle else Icons.Default.Error,
-                            contentDescription = null,
-                            tint = if (lastResult!!.success) Color(0xFF4CAF50) else Color(0xFFF44336)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(lastResult!!.message, color = Color.White, style = MaterialTheme.typography.bodySmall)
+                    if (!isExecuting && knockResults.size == knockSteps.size) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF1C3A2E)),
+                                border = BorderStroke(1.dp, Color(0xFF00BFA5))
+                            ) {
+                                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF00BFA5))
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Sequence fully executed. Target ports should now be accessible if the knocker daemon is correctly configured.", 
+                                        color = Color(0xFFE6EDF3), fontSize = 13.sp)
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            Button(
-                onClick = { viewModel.executeKnock(host) },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                enabled = host.isNotBlank() && !isExecuting,
-                colors = ButtonDefaults.buttonColors(containerColor = TealPrimary)
+            Surface(
+                tonalElevation = 8.dp,
+                shadowElevation = 8.dp,
+                color = MaterialTheme.colorScheme.surface
             ) {
-                if (isExecuting) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.Black)
-                } else {
-                    Icon(Icons.Outlined.PlayArrow, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Execute Knock Sequence", fontWeight = FontWeight.Bold)
+                Button(
+                    onClick = { viewModel.executeKnockSequence(targetHost) },
+                    enabled = canExecute && !isExecuting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .height(52.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF00BFA5),
+                        contentColor = Color(0xFF003D36),
+                        disabledContainerColor = Color(0xFF21262D),
+                        disabledContentColor = Color(0xFF8B949E)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (isExecuting) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color(0xFF003D36))
+                    } else {
+                        Icon(Icons.Outlined.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Execute Knock Sequence", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -143,75 +186,140 @@ fun PortKnockerScreen(
 }
 
 @Composable
-fun KnockStepRow(
-    step: PortKnocker.KnockStep,
-    onUpdate: (PortKnocker.KnockStep) -> Unit,
-    onRemove: () -> Unit,
-    isLast: Boolean
+fun KnockStepCard(
+    step: PortKnocker.UIKnockStep,
+    stepNumber: Int,
+    onPortChange: (String) -> Unit,
+    onProtocolChange: (String) -> Unit,
+    onDelayChange: (String) -> Unit,
+    onDelete: () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF161B22))
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF161B22)
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Port
-            OutlinedTextField(
-                value = if (step.port == 0) "" else step.port.toString(),
-                onValueChange = { 
-                    val newPort = it.toIntOrNull() ?: 0
-                    onUpdate(step.copy(port = newPort))
-                },
-                label = { Text("Port") },
-                modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true
-            )
-
-            // Protocol
-            var expanded by remember { mutableStateOf(false) }
-            Box(modifier = Modifier.weight(1f)) {
-                OutlinedButton(
-                    onClick = { expanded = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(4.dp)
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 8.dp)
+            ) {
+                Surface(
+                    color = Color(0xFF1C3A2E),
+                    shape = CircleShape
                 ) {
-                    Text(step.protocol.name)
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                    Text(
+                        "$stepNumber",
+                        color = Color(0xFF00BFA5),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    PortKnocker.Protocol.values().forEach { proto ->
-                        DropdownMenuItem(
-                            text = { Text(proto.name) },
-                            onClick = { 
-                                onUpdate(step.copy(protocol = proto))
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            // Delay (except for last)
-            if (!isLast) {
-                OutlinedTextField(
-                    value = step.delayMs.toString(),
-                    onValueChange = { 
-                        val newDelay = it.toLongOrNull() ?: 0L
-                        onUpdate(step.copy(delayMs = newDelay))
-                    },
-                    label = { Text("Delay ms") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Knock Step",
+                    color = Color(0xFF8B949E),
+                    fontSize = 12.sp
                 )
             }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = step.port,
+                    onValueChange = onPortChange,
+                    label = { Text("Port") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF00BFA5),
+                        unfocusedBorderColor = Color(0xFF30363D),
+                        focusedLabelColor = Color(0xFF00BFA5),
+                        unfocusedLabelColor = Color(0xFF8B949E),
+                        focusedTextColor = Color(0xFFE6EDF3),
+                        unfocusedTextColor = Color(0xFFE6EDF3)
+                    )
+                )
 
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Outlined.Delete, contentDescription = "Remove", tint = Color.Red)
+                var expanded by remember { mutableStateOf(false) }
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = { expanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(4.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF00BFA5)),
+                        border = BorderStroke(1.dp, Color(0xFF30363D))
+                    ) {
+                        Text(step.protocol)
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        listOf("TCP", "UDP").forEach { protocol ->
+                            DropdownMenuItem(
+                                text = { Text(protocol) },
+                                onClick = {
+                                    onProtocolChange(protocol)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = step.delayMs,
+                    onValueChange = onDelayChange,
+                    label = { Text("Delay ms") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF00BFA5),
+                        unfocusedBorderColor = Color(0xFF30363D),
+                        focusedLabelColor = Color(0xFF00BFA5),
+                        unfocusedLabelColor = Color(0xFF8B949E),
+                        focusedTextColor = Color(0xFFE6EDF3),
+                        unfocusedTextColor = Color(0xFFE6EDF3)
+                    )
+                )
+
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Outlined.Delete, contentDescription = "Remove step", tint = Color(0xFFF44336))
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun ExecutionResultRow(result: PortKnocker.KnockResult) {
+    val time = remember(result.timestamp) {
+        SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date(result.timestamp))
+    }
+    
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            if (result.success) Icons.Default.CheckCircle else Icons.Default.Error,
+            contentDescription = null,
+            tint = if (result.success) Color(0xFF4CAF50) else Color(0xFFF44336),
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text("Step ${result.step}: ${result.protocol} ${result.port}", 
+                color = Color(0xFFE6EDF3), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text(time, color = Color(0xFF8B949E), fontSize = 11.sp, fontFamily = MonoType)
         }
     }
 }

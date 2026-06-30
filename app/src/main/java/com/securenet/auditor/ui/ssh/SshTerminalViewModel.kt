@@ -23,7 +23,7 @@ class SshTerminalViewModel(
     val isConnecting: StateFlow<Boolean> = _isConnecting.asStateFlow()
 
     private val _terminalOutput = MutableStateFlow<List<TerminalLine>>(
-        listOf(TerminalLine("SecureNet SSH Terminal v1.1", TerminalLineType.SYSTEM))
+        listOf(TerminalLine("SecureNet SSH Terminal v1.2", TerminalLineType.SYSTEM))
     )
     val terminalOutput: StateFlow<List<TerminalLine>> = _terminalOutput.asStateFlow()
 
@@ -57,12 +57,15 @@ class SshTerminalViewModel(
                 addOutputLine("Using key from Vault...", TerminalLineType.SYSTEM)
             }
 
-            val success = client.connect(host, user, password = pass, privateKey = privateKey)
-            if (success) {
-                _isConnected.value = true
-                addOutputLine("Connected successfully.", TerminalLineType.SYSTEM)
-            } else {
-                addOutputLine("Connection failed. Check credentials or host.", TerminalLineType.ERROR)
+            when (val result = client.connect(host, user, password = pass, privateKey = privateKey)) {
+                is SshClient.ConnectionResult.Success -> {
+                    _isConnected.value = true
+                    addOutputLine("Connected successfully.", TerminalLineType.SYSTEM)
+                    addOutputLine("Welcome to $host.", TerminalLineType.SYSTEM)
+                }
+                is SshClient.ConnectionResult.Failure -> {
+                    addOutputLine(result.message, TerminalLineType.ERROR)
+                }
             }
             _isConnecting.value = false
         }

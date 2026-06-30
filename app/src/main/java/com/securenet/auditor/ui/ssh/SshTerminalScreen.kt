@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -76,6 +77,34 @@ fun SshTerminalScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            // Security Disclaimer Banner
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF3D2A00)
+                ),
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Outlined.Warning,
+                        contentDescription = "Security Warning",
+                        tint = Color(0xFFF0B429),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "Only connect to servers you own or have explicit authorization to access. Unauthorized access is illegal.",
+                        color = Color(0xFFF0B429),
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+
             if (!isConnected) {
                 // Connection Form
                 Column(
